@@ -1,3 +1,5 @@
+import { useRef } from "react";
+
 export function ChatInputBox({
   value,
   onChange,
@@ -9,14 +11,18 @@ export function ChatInputBox({
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   disabled: boolean;
 }) {
+  const composingRef = useRef(false);
+
   return (
     <form onSubmit={onSubmit} className="border-t border-[var(--line)] p-3">
       <div className="rounded-xl border border-[var(--line)] bg-[var(--panel)] transition-colors focus-within:border-[var(--line-strong)]">
         <textarea
           value={value}
           onChange={(event) => onChange(event.target.value)}
+          onCompositionStart={() => { composingRef.current = true; }}
+          onCompositionEnd={() => { composingRef.current = false; }}
           onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
+            if (event.key === "Enter" && !event.shiftKey && !composingRef.current) {
               event.preventDefault();
               event.currentTarget.form?.requestSubmit();
             }

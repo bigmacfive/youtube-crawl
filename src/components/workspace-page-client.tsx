@@ -165,20 +165,27 @@ export function WorkspacePageClient() {
 
     setQuestion("");
     setError("");
-    setBanner("Searching the transcript and drafting an answer...");
+    setBanner("");
     setIsChatBusy(true);
 
+    // Immediately add user message + empty assistant placeholder for streaming
+    setWorkspace((previous) => ({
+      ...previous,
+      chatMessages: [
+        ...previous.chatMessages,
+        { role: "user", content: trimmedQuestion },
+        { role: "assistant", content: "", sources: [] },
+      ],
+    }));
+
     try {
-      const response = await fetch("/api/assistant", {
+      const response = await fetch("/api/assistant/stream", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           provider: workspace.provider,
           apiKey: currentApiKey,
           model: currentModel,
-          mode: "chat",
           instruction: workspace.instruction,
           language: transcript.language.label,
           question: trimmedQuestion,
@@ -188,35 +195,97 @@ export function WorkspacePageClient() {
         }),
       });
 
-      const data = (await response.json()) as unknown;
-
       if (!response.ok) {
+        const data = (await response.json()) as unknown;
         throw new Error(
           getErrorMessage(data, "Failed to answer the question."),
         );
       }
 
-      setWorkspace((previous) => ({
-        ...previous,
-        chatMessages: [
-          ...previous.chatMessages,
-          { role: "user", content: trimmedQuestion },
-          {
-            role: "assistant",
-            content: getContent(data),
-            sources: getSources(data),
-          },
-        ],
-      }));
-      setBanner("Answer ready.");
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("No response stream.");
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let streamedContent = "";
+      let streamedSources: unknown[] = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6).trim();
+          if (!data) continue;
+
+          try {
+            const event = JSON.parse(data) as {
+              type: string;
+              text?: string;
+              sources?: unknown[];
+              error?: string;
+            };
+
+            if (event.type === "sources" && event.sources) {
+              streamedSources = event.sources;
+            } else if (event.type === "chunk" && event.text) {
+              streamedContent += event.text;
+              setWorkspace((previous) => {
+                const msgs = [...previous.chatMessages];
+                const last = msgs[msgs.length - 1];
+                if (last?.role === "assistant") {
+                  msgs[msgs.length - 1] = {
+                    ...last,
+                    content: streamedContent,
+                    sources: streamedSources as typeof last.sources,
+                  };
+                }
+                return { ...previous, chatMessages: msgs };
+              });
+            } else if (event.type === "error") {
+              throw new Error(event.error || "Stream failed.");
+            }
+          } catch (parseError) {
+            if (parseError instanceof SyntaxError) continue;
+            throw parseError;
+          }
+        }
+      }
+
+      // Final update
+      setWorkspace((previous) => {
+        const msgs = [...previous.chatMessages];
+        const last = msgs[msgs.length - 1];
+        if (last?.role === "assistant") {
+          msgs[msgs.length - 1] = {
+            ...last,
+            content: streamedContent,
+            sources: streamedSources as typeof last.sources,
+          };
+        }
+        return { ...previous, chatMessages: msgs };
+      });
     } catch (chatError) {
+      // Remove the placeholder messages on error
+      setWorkspace((previous) => {
+        const msgs = [...previous.chatMessages];
+        if (msgs.length >= 2 && msgs[msgs.length - 1]?.role === "assistant") {
+          msgs.pop();
+          msgs.pop();
+        }
+        return { ...previous, chatMessages: msgs };
+      });
       setQuestion(trimmedQuestion);
       setError(
         chatError instanceof Error
           ? chatError.message
           : "Failed to answer the question.",
       );
-      setBanner("");
     } finally {
       setIsChatBusy(false);
     }

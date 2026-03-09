@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 
 import type { AssistantMessage } from "@/lib/contracts";
 
@@ -11,6 +11,15 @@ export function ChatMessageList({
   isBusy: boolean;
   hasTranscript?: boolean;
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when messages change or during streaming
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) {
+      el.scrollTop = el.scrollHeight;
+    }
+  }, [messages]);
   if (messages.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center px-5 py-10">
@@ -42,7 +51,7 @@ export function ChatMessageList({
   }
 
   return (
-    <div className="custom-scrollbar flex-1 space-y-1 overflow-auto px-3 py-3">
+    <div ref={scrollRef} className="custom-scrollbar flex-1 space-y-1 overflow-auto px-3 py-3">
       {messages.map((message, index) => (
         <article
           key={`${message.role}-${index}`}
