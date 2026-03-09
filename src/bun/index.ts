@@ -102,10 +102,10 @@ function createMainWindow(url: string) {
     renderer: "native",
     titleBarStyle: "hiddenInset",
     frame: {
-      width: 1120,
-      height: 760,
-      x: 160,
-      y: 100,
+      width: 960,
+      height: 640,
+      x: 180,
+      y: 120,
     },
   });
 }
