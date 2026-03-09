@@ -38,7 +38,7 @@ export function SummaryView({
             <button
               type="button"
               onClick={onGenerate}
-              className="mt-4 rounded-full border border-[var(--danger)] px-4 py-2 text-sm font-medium text-[var(--danger)] transition hover:bg-white"
+              className="mt-4 rounded-full border border-[var(--danger)] px-4 py-2 text-sm font-medium text-[var(--danger)] transition hover:bg-[var(--panel)]"
             >
               Try Again
             </button>
@@ -66,7 +66,7 @@ export function SummaryView({
             type="button"
             disabled={disabled}
             onClick={onGenerate}
-            className="rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] px-5 py-3 text-sm font-medium text-[var(--accent-strong)] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-45"
+            className="rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] px-5 py-3 text-sm font-medium text-[var(--accent-strong)] transition hover:bg-[var(--panel)] disabled:cursor-not-allowed disabled:opacity-45"
           >
             Generate Summary
           </button>

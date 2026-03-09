@@ -23,34 +23,30 @@ export function AiChatPanel({
   disabled: boolean;
 }) {
   return (
-    <aside className="flex min-h-[720px] flex-col overflow-hidden rounded-[24px] border border-[var(--line)] bg-[var(--panel)] shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
-      <div className="border-b border-[var(--line)] bg-[var(--panel-soft)] px-5 py-5">
-        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">
-          AI Chat
-        </p>
-        <h2 className="mt-2 text-lg font-semibold text-[var(--foreground)]">
-          Transcript assistant
-        </h2>
-        <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
-          {transcript
-            ? "The assistant stays alongside the document and answers from the current video."
-            : "Load a transcript first. The chat panel stays ready, but it needs a video to ground answers."}
-        </p>
-        {disabled ? (
-          <div className="mt-4 text-sm leading-7 text-[var(--muted)]">
-            Add a provider key in{" "}
-            <Link
-              href="/settings"
-              className="font-medium text-[var(--accent-strong)]"
-            >
-              Settings
-            </Link>
-            .
-          </div>
-        ) : null}
+    <aside className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--background)]">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-[var(--line)] px-4 py-3">
+        <span className="text-sm font-medium text-[var(--foreground)]">
+          Chat
+        </span>
+        {disabled && (
+          <Link
+            href="/settings"
+            className="text-xs text-[var(--foreground-muted)] transition hover:text-[var(--foreground)]"
+          >
+            Add API key
+          </Link>
+        )}
       </div>
 
-      <ChatMessageList messages={messages} isBusy={isBusy} />
+      {/* Messages */}
+      <ChatMessageList
+        messages={messages}
+        isBusy={isBusy}
+        hasTranscript={Boolean(transcript)}
+      />
+
+      {/* Input */}
       <ChatInputBox
         value={question}
         onChange={onQuestionChange}

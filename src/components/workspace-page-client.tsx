@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
+
+import { saveToHistory } from "@/lib/history";
 
 import { ResultWorkspace } from "@/components/result-workspace";
 import { usePersistedWorkspace } from "@/components/use-persisted-workspace";
@@ -22,25 +24,21 @@ export function WorkspacePageClient() {
     transcript && currentApiKey.trim() && currentModel.trim(),
   );
 
-  const topMeta = useMemo(
-    () => [
-      {
-        label: "Source",
-        value: workspace.selectedVideo?.title ?? "No transcript loaded",
-      },
-      {
-        label: "Tab",
-        value:
-          workspace.activeTab.charAt(0).toUpperCase() +
-          workspace.activeTab.slice(1),
-      },
-      {
-        label: "AI",
-        value: currentModel || "Configure in Settings",
-      },
-    ],
-    [currentModel, workspace.activeTab, workspace.selectedVideo?.title],
-  );
+  // Auto-save to history when workspace changes (debounced)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => {
+    if (!transcript) return;
+    clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      saveToHistory(
+        transcript,
+        workspace.chatMessages,
+        workspace.summaryState,
+        workspace.detailState,
+      );
+    }, 2000);
+    return () => clearTimeout(saveTimerRef.current);
+  }, [transcript, workspace.chatMessages, workspace.summaryState, workspace.detailState]);
 
   async function requestDocument(mode: "summary" | "detail") {
     if (!transcript) {
@@ -224,11 +222,11 @@ export function WorkspacePageClient() {
 
   if (!isHydrated) {
     return (
-      <main className="min-h-screen bg-[var(--background)] px-5 py-5 text-[var(--foreground)] sm:px-8">
-        <div className="mx-auto max-w-6xl">
-          <WorkspaceNav backHref="/preview" backLabel="Video" />
-          <div className="mt-5 rounded-[24px] border border-[var(--line)] bg-[var(--panel)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
-            <p className="text-sm text-[var(--muted)]">Loading workspace...</p>
+      <main className="min-h-screen bg-[var(--background)] px-5 py-5 sm:px-8">
+        <div className="mx-auto max-w-[1600px]">
+          <WorkspaceNav />
+          <div className="mt-5 rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-6">
+            <p className="text-sm text-[var(--foreground-muted)]">Loading workspace...</p>
           </div>
         </div>
       </main>
@@ -237,20 +235,19 @@ export function WorkspacePageClient() {
 
   if (!transcript) {
     return (
-      <main className="min-h-screen bg-[var(--background)] px-5 py-5 text-[var(--foreground)] sm:px-8">
-        <div className="mx-auto flex max-w-5xl flex-col gap-5">
-          <WorkspaceNav backHref="/" backLabel="Back" />
-          <div className="rounded-[28px] border border-[var(--line)] bg-[var(--panel)] p-10 text-center shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
-            <h1 className="text-3xl font-semibold tracking-[-0.04em]">
-              No transcript is loaded yet.
+      <main className="min-h-screen bg-[var(--background)] px-5 py-5 sm:px-8">
+        <div className="mx-auto flex max-w-[1600px] flex-col gap-5">
+          <WorkspaceNav />
+          <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-10 text-center">
+            <h1 className="text-xl font-semibold">
+              No transcript loaded yet.
             </h1>
-            <p className="mt-4 text-sm leading-7 text-[var(--muted)]">
-              Go back, add a YouTube link, and load the
-              transcript first.
+            <p className="mt-3 text-sm text-[var(--foreground-muted)]">
+              Go back, add a YouTube link, and load the transcript first.
             </p>
             <Link
               href="/"
-              className="mt-6 inline-flex rounded-full border border-[var(--accent)] bg-[var(--accent)] px-5 py-3 text-sm font-medium text-white transition hover:opacity-90"
+              className="mt-6 inline-flex rounded-lg bg-[var(--foreground)] px-5 py-2.5 text-sm font-medium text-[var(--background)] transition hover:opacity-85"
             >
               Back to Load
             </Link>
@@ -261,71 +258,23 @@ export function WorkspacePageClient() {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--background)] px-5 py-5 text-[var(--foreground)] sm:px-8">
-      <div className="mx-auto flex max-w-[1600px] flex-col gap-4">
-        <WorkspaceNav backHref="/preview" backLabel="Video">
-          <Link
-            href="/settings"
-            className="rounded-full border border-[var(--line)] bg-[var(--panel-soft)] px-4 py-2 text-sm text-[var(--muted)] transition hover:border-[var(--line-strong)] hover:text-[var(--foreground)]"
-          >
-            Settings
-          </Link>
+    <main className="flex h-screen flex-col overflow-hidden bg-[var(--background)] px-5 py-5 sm:px-8">
+      <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-3 overflow-hidden">
+        <WorkspaceNav>
           <a
             href={transcript.canonicalUrl}
             target="_blank"
             rel="noreferrer"
-            className="rounded-full border border-[var(--line)] bg-[var(--panel-soft)] px-4 py-2 text-sm text-[var(--muted)] transition hover:border-[var(--line-strong)] hover:text-[var(--foreground)]"
+            className="rounded-md px-3 py-1.5 text-sm text-[var(--foreground-muted)] transition hover:bg-[var(--panel-strong)] hover:text-[var(--foreground)]"
           >
             YouTube
           </a>
+          <NavLink href="/settings">Settings</NavLink>
         </WorkspaceNav>
-
-        <section className="rounded-[24px] border border-[var(--line)] bg-[var(--panel)] shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
-          <div className="flex flex-col gap-4 px-5 py-5 sm:px-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-3 font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">
-                <span>{transcript.language.label}</span>
-                <span className="h-1 w-1 rounded-full bg-[var(--line-strong)]" />
-                <span>
-                  {transcript.stats.segmentCount.toLocaleString("en-US")} segments
-                </span>
-                {transcript.authorName ? (
-                  <>
-                    <span className="h-1 w-1 rounded-full bg-[var(--line-strong)]" />
-                    <span>{transcript.authorName}</span>
-                  </>
-                ) : null}
-              </div>
-              <h1 className="mt-3 max-w-5xl text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">
-                {transcript.title ?? transcript.videoId}
-              </h1>
-              <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--muted)]">
-                Script is live. Summary and Detail stay dormant until you open
-                their tabs.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              {topMeta.map((item) => (
-                <div
-                  key={item.label}
-                  className="min-w-[128px] rounded-2xl border border-[var(--line)] bg-[var(--panel-soft)] px-4 py-3"
-                >
-                  <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">
-                    {item.label}
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-[var(--foreground)]">
-                    {item.value}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
 
         {banner || error ? (
           <section
-            className={`rounded-2xl border px-5 py-4 text-sm leading-7 shadow-[0_18px_40px_rgba(15,23,42,0.06)] ${
+            className={`rounded-xl border px-5 py-4 text-sm ${
               error
                 ? "border-[var(--danger)]/35 bg-[var(--danger-soft)]"
                 : "border-[var(--line)] bg-[var(--panel)]"
@@ -352,6 +301,23 @@ export function WorkspacePageClient() {
         />
       </div>
     </main>
+  );
+}
+
+function NavLink({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className="rounded-md px-3 py-1.5 text-sm text-[var(--foreground-muted)] transition hover:bg-[var(--panel-strong)] hover:text-[var(--foreground)]"
+    >
+      {children}
+    </Link>
   );
 }
 

@@ -1,30 +1,55 @@
 @import "tailwindcss";
-@import "@fontsource/space-grotesk/400.css";
-@import "@fontsource/space-grotesk/500.css";
-@import "@fontsource/space-grotesk/700.css";
 @import "@fontsource/ibm-plex-mono/400.css";
 @import "@fontsource/ibm-plex-mono/500.css";
 
+/* Light theme (default) — Zed One Light */
 :root {
-  --background: #f4f6fb;
-  --foreground: #2b3038;
-  --muted: #687385;
-  --line: #d8deea;
-  --line-strong: #bcc6d8;
-  --panel: #fcfdff;
-  --panel-soft: #f1f4fa;
-  --panel-strong: #e8edf5;
-  --accent: #4078f2;
-  --accent-soft: #ebf2ff;
-  --accent-strong: #285cc7;
-  --danger: #c23b3b;
-  --danger-soft: #fff1f1;
+  --background: #fafafa;
+  --background-soft: #f0f0f1;
+  --foreground: #383a42;
+  --foreground-muted: #a0a1a7;
+  --muted: #a0a1a7;
+  --line: #d4d4d8;
+  --line-strong: #c8c8cc;
+  --panel: #ffffff;
+  --panel-soft: #f5f5f6;
+  --panel-strong: #e5e5e6;
+  --accent: #383a42;
+  --accent-soft: rgba(56, 58, 66, 0.06);
+  --accent-strong: #1a1a1a;
+  --danger: #e45649;
+  --danger-soft: rgba(228, 86, 73, 0.08);
+  --selection-bg: #bfceff;
+  --selection-fg: #383a42;
+  --scrollbar-thumb-hover: #a0a1a7;
+}
+
+/* Dark theme */
+[data-theme="dark"] {
+  --background: #0a0a0b;
+  --background-soft: #111113;
+  --foreground: #e4e4e7;
+  --foreground-muted: #71717a;
+  --muted: #71717a;
+  --line: #27272a;
+  --line-strong: #3f3f46;
+  --panel: #18181b;
+  --panel-soft: #1c1c1f;
+  --panel-strong: #27272a;
+  --accent: #e4e4e7;
+  --accent-soft: rgba(228, 228, 231, 0.08);
+  --accent-strong: #ffffff;
+  --danger: #a1a1aa;
+  --danger-soft: rgba(161, 161, 170, 0.1);
+  --selection-bg: #52525b;
+  --selection-fg: #ffffff;
+  --scrollbar-thumb-hover: #52525b;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: "Space Grotesk", sans-serif;
+  --font-sans: "Goorm Sans", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", monospace;
 }
 
@@ -34,22 +59,18 @@
 
 html {
   background: var(--background);
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 body {
   min-height: 100vh;
-  background:
-    radial-gradient(circle at top left, rgba(64, 120, 242, 0.08), transparent 26%),
-    linear-gradient(rgba(132, 150, 181, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(132, 150, 181, 0.08) 1px, transparent 1px),
-    linear-gradient(180deg, #fbfcff 0%, #f4f6fb 100%);
-  background-size:
-    auto,
-    24px 24px,
-    24px 24px,
-    auto;
+  background: var(--background);
   color: var(--foreground);
-  font-family: "Space Grotesk", sans-serif;
+  font-family: "Goorm Sans", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -66,6 +87,40 @@ textarea {
 }
 
 ::selection {
-  background: var(--accent);
-  color: #ffffff;
+  background: var(--selection-bg);
+  color: var(--selection-fg);
+}
+
+::placeholder {
+  color: var(--foreground-muted);
+}
+
+input:focus,
+textarea:focus {
+  outline: none;
+}
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--panel);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* Firefox */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) var(--panel);
 }

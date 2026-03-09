@@ -2,9 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import type { TranscriptPayload } from "@/lib/contracts";
+import type { VideoHistoryEntry } from "@/lib/history";
+import {
+  deleteFromHistory,
+  readHistory,
+} from "@/lib/history";
 import {
   buildSelectedVideo,
   createIdleDocumentState,
@@ -12,31 +16,21 @@ import {
 } from "@/lib/workspace";
 
 import { usePersistedWorkspace } from "@/components/use-persisted-workspace";
+import { VideoHistoryGrid } from "@/components/video-history-grid";
 import { WorkspaceNav } from "@/components/workspace-nav";
 
 export function TranscriptWorkbench() {
   const router = useRouter();
   const { workspace, setWorkspace, isHydrated } = usePersistedWorkspace();
-  const [status, setStatus] = useState("Paste a YouTube link.");
   const [error, setError] = useState("");
-  const [isFetchingTranscript, setIsFetchingTranscript] = useState(false);
+  const [history, setHistory] = useState<VideoHistoryEntry[]>([]);
 
   useEffect(() => {
-    if (!isHydrated) {
-      return;
-    }
+    if (!isHydrated) return;
+    setHistory(readHistory());
+  }, [isHydrated]);
 
-    setStatus(
-      workspace.transcript
-        ? "A transcript is already loaded."
-        : "Paste a YouTube link.",
-    );
-  }, [isHydrated, workspace.transcript]);
-
-  const transcriptReady = Boolean(workspace.transcript);
-  const fetchBusy = isFetchingTranscript;
-
-  async function handleTranscriptFetch(event: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
 
@@ -45,145 +39,133 @@ export function TranscriptWorkbench() {
       return;
     }
 
-    setIsFetchingTranscript(true);
-    setStatus("Loading video and transcript...");
+    // Clear previous transcript so preview page triggers a fresh fetch
+    const nextWorkspace = {
+      ...workspace,
+      transcript: null,
+      selectedVideo: null,
+      summaryState: createIdleDocumentState(),
+      detailState: createIdleDocumentState(),
+      chatMessages: [],
+    };
+    setWorkspace(nextWorkspace);
+    writeWorkspaceStorage(nextWorkspace);
 
-    try {
-      const response = await fetch("/api/transcript", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          url: workspace.url,
-          language: workspace.language,
-        }),
-      });
+    // Navigate immediately — preview page handles loading
+    router.push("/preview");
+  }
 
-      const data = (await response.json()) as unknown;
-      const payload = data as TranscriptPayload;
+  const handleDeleteHistory = useCallback((videoId: string) => {
+    const updated = deleteFromHistory(videoId);
+    setHistory(updated);
+  }, []);
 
-      if (!response.ok) {
-        throw new Error(
-          getErrorMessage(data, "Failed to load the transcript."),
-        );
-      }
-
+  const handleLoadHistory = useCallback(
+    (entry: VideoHistoryEntry) => {
       const nextWorkspace = {
         ...workspace,
+        url: entry.canonicalUrl,
         activeTab: "script" as const,
-        transcript: payload,
-        selectedVideo: buildSelectedVideo(payload),
-        summaryState: createIdleDocumentState(),
-        detailState: createIdleDocumentState(),
-        chatMessages: [],
+        transcript: entry.transcript,
+        selectedVideo: buildSelectedVideo(entry.transcript),
+        summaryState: entry.summaryContent
+          ? { status: "loaded" as const, content: entry.summaryContent, error: "" }
+          : createIdleDocumentState(),
+        detailState: entry.detailContent
+          ? { status: "loaded" as const, content: entry.detailContent, error: "" }
+          : createIdleDocumentState(),
+        chatMessages: entry.chatMessages,
       };
-
       setWorkspace(nextWorkspace);
       writeWorkspaceStorage(nextWorkspace);
-
-      setStatus("Video loaded. Opening preview...");
-      router.push("/preview");
-    } catch (fetchError) {
-      setError(
-        fetchError instanceof Error
-          ? fetchError.message
-          : "Failed to load the transcript.",
-      );
-      setStatus("Transcript request failed.");
-    } finally {
-      setIsFetchingTranscript(false);
-    }
-  }
+      router.push("/workspace");
+    },
+    [workspace, setWorkspace, router],
+  );
 
   if (!isHydrated) {
     return (
-      <main className="min-h-screen bg-[var(--background)] px-5 py-5 text-[var(--foreground)] sm:px-8">
-        <div className="mx-auto max-w-6xl">
+      <main className="min-h-screen bg-[var(--background)] px-5 py-5 sm:px-8">
+        <div className="mx-auto max-w-[1600px]">
           <WorkspaceNav>
-            <Link
-              href="/settings"
-              className="rounded-full border border-[var(--line)] bg-[var(--panel-soft)] px-4 py-2 text-sm text-[var(--muted)] transition hover:border-[var(--line-strong)] hover:text-[var(--foreground)]"
-            >
-              Settings
-            </Link>
+            <NavLink href="/settings">Settings</NavLink>
           </WorkspaceNav>
-          <div className="mt-5 rounded-[24px] border border-[var(--line)] bg-[var(--panel)] p-6 shadow-[0_20px_50px_rgba(40,52,78,0.06)]">
-            <p className="text-sm text-[var(--muted)]">Loading...</p>
-          </div>
         </div>
       </main>
     );
   }
 
-  return (
-    <main className="min-h-screen bg-[var(--background)] px-5 py-5 text-[var(--foreground)] sm:px-8">
-      <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-5">
-        <WorkspaceNav>
-          <Link
-            href="/settings"
-            className="rounded-full border border-[var(--line)] bg-[var(--panel-soft)] px-4 py-2 text-sm text-[var(--muted)] transition hover:border-[var(--line-strong)] hover:text-[var(--foreground)]"
-          >
-            Settings
-          </Link>
-        </WorkspaceNav>
+  const hasHistory = history.length > 0;
 
-        <section className="flex flex-1 items-center justify-center py-6">
+  return (
+    <main className="flex h-screen flex-col bg-[var(--background)] px-5 py-5 sm:px-8">
+      <div className="mx-auto flex w-full max-w-[1600px] flex-col">
+        <WorkspaceNav>
+          <NavLink href="/settings">Settings</NavLink>
+        </WorkspaceNav>
+      </div>
+
+      <div className={`custom-scrollbar mx-auto flex w-full max-w-[1600px] flex-1 flex-col overflow-y-auto ${hasHistory ? "pt-10" : "items-center justify-center pb-20"}`}>
+        <div className={`${hasHistory ? "" : "flex flex-col items-center"} w-full`}>
+          <h1 className="mb-1 text-lg font-semibold text-[var(--foreground)]">
+            youtube-crawl
+          </h1>
+          <p className="mb-8 text-sm text-[var(--foreground-muted)]">
+            Paste a link to get started
+          </p>
+
           <form
-            onSubmit={handleTranscriptFetch}
-            className="w-full max-w-3xl rounded-[28px] border border-[var(--line)] bg-[var(--panel)] p-5 shadow-[0_24px_60px_rgba(40,52,78,0.08)] sm:p-6"
+            onSubmit={handleSubmit}
+            className={`w-full ${hasHistory ? "" : "max-w-lg"}`}
           >
-            <div className="rounded-[24px] border border-[var(--line)] bg-[var(--panel-soft)] p-4 sm:p-5">
+            <div className="flex items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--panel)] p-1.5 transition-colors focus-within:border-[var(--line-strong)]">
               <input
                 value={workspace.url}
-                onChange={(event) =>
-                  setWorkspace((previous) => ({
-                    ...previous,
-                    url: event.target.value,
-                  }))
+                onChange={(e) =>
+                  setWorkspace((prev) => ({ ...prev, url: e.target.value }))
                 }
-                placeholder="https://www.youtube.com/watch?v=..."
-                className="min-h-[72px] w-full rounded-[20px] border border-[var(--line)] bg-white px-5 text-base outline-none placeholder:text-[var(--muted)] focus:border-[var(--accent)] sm:text-lg"
+                placeholder="https://youtube.com/watch?v=..."
+                className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--foreground-muted)]/40"
               />
-
-              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <button
-                  type="submit"
-                  disabled={fetchBusy}
-                  className="rounded-full border border-[var(--accent)] bg-[var(--accent)] px-5 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
-                >
-                  {fetchBusy ? "Loading..." : "Load"}
-                </button>
-                {transcriptReady ? (
-                  <Link
-                    href="/preview"
-                    className="rounded-full border border-[var(--line)] bg-white px-5 py-3 text-center text-sm font-medium text-[var(--foreground)] transition hover:border-[var(--line-strong)]"
-                  >
-                    Continue
-                  </Link>
-                ) : null}
-              </div>
-
-              <p
-                className={`mt-4 text-sm leading-7 ${
-                  error ? "text-[var(--danger)]" : "text-[var(--muted)]"
-                }`}
+              <button
+                type="submit"
+                className="shrink-0 rounded-lg bg-[var(--foreground)] px-5 py-2 text-sm font-medium text-[var(--background)] transition hover:opacity-85"
               >
-                {error || status}
-              </p>
+                Load
+              </button>
             </div>
+
+            {error && (
+              <p className="mt-3 px-1 text-xs text-[var(--danger)]">
+                {error}
+              </p>
+            )}
           </form>
-        </section>
+
+          <VideoHistoryGrid
+            entries={history}
+            onDelete={handleDeleteHistory}
+            onLoad={handleLoadHistory}
+          />
+        </div>
       </div>
     </main>
   );
 }
 
-function getErrorMessage(value: unknown, fallback: string) {
-  if (!value || typeof value !== "object") {
-    return fallback;
-  }
-
-  const record = value as { error?: unknown };
-  return typeof record.error === "string" ? record.error : fallback;
+function NavLink({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className="rounded-md px-3 py-1.5 text-sm text-[var(--foreground-muted)] transition hover:bg-[var(--panel-strong)] hover:text-[var(--foreground)]"
+    >
+      {children}
+    </Link>
+  );
 }

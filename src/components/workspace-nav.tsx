@@ -11,24 +11,26 @@ export function WorkspaceNav({
   children?: ReactNode;
 }) {
   return (
-    <header className="flex items-center justify-between gap-4 rounded-[18px] border border-[var(--line)] bg-[var(--panel)]/92 px-3 py-3 shadow-[0_14px_35px_rgba(40,52,78,0.06)] backdrop-blur">
+    <header className="flex h-10 shrink-0 items-center justify-between gap-4 px-1">
       <div className="flex items-center gap-2">
         <Link
           href="/"
-          className="rounded-xl px-3 py-2 text-sm font-semibold tracking-[-0.02em] text-[var(--foreground)] transition hover:bg-[var(--panel-soft)]"
+          className="text-sm font-semibold text-[var(--foreground)] transition hover:opacity-70"
         >
-          Transcript Desk
+          youtube-crawl
         </Link>
         {backHref && backLabel ? (
-          <Link
-            href={backHref}
-            className="rounded-xl border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-2 text-sm text-[var(--muted)] transition hover:border-[var(--line-strong)] hover:text-[var(--foreground)]"
-          >
-            {backLabel}
-          </Link>
+          <>
+            <span className="text-[var(--line-strong)]">/</span>
+            <Link
+              href={backHref}
+              className="text-sm text-[var(--foreground-muted)] transition hover:text-[var(--foreground)]"
+            >
+              {backLabel}
+            </Link>
+          </>
         ) : null}
       </div>
-
       <div className="flex items-center gap-2">{children}</div>
     </header>
   );

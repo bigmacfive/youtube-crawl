@@ -3,55 +3,64 @@ import type { AssistantMessage } from "@/lib/contracts";
 export function ChatMessageList({
   messages,
   isBusy,
+  hasTranscript,
 }: {
   messages: AssistantMessage[];
   isBusy: boolean;
+  hasTranscript?: boolean;
 }) {
   if (messages.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center px-5 py-10">
-        <div className="max-w-sm space-y-4 text-center">
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">
-            AI Panel
+        <div className="max-w-xs space-y-3 text-center">
+          <p className="text-sm text-[var(--foreground-muted)]">
+            {hasTranscript
+              ? "Ask anything about the transcript."
+              : "Load a transcript to start chatting."}
           </p>
-          <p className="text-sm leading-7 text-[var(--muted)]">
-            Ask about claims, timestamps, action items, or only a portion of the
-            video. The transcript remains the source of truth.
-          </p>
-          <div className="space-y-2 rounded-[18px] border border-[var(--line)] bg-[var(--panel-soft)] px-4 py-4 text-left text-sm leading-7 text-[var(--foreground)]">
-            <p>Summarize the core argument in 3 lines.</p>
-            <p>Explain only the part after 05:00.</p>
-            <p>Separate claims from evidence.</p>
-          </div>
+          {hasTranscript && (
+            <div className="space-y-1.5 text-left">
+              {[
+                "Summarize the core argument",
+                "What happens after 05:00?",
+                "List all claims with evidence",
+              ].map((example) => (
+                <p
+                  key={example}
+                  className="rounded-lg bg-[var(--panel)] px-3 py-2 text-xs text-[var(--foreground-muted)]"
+                >
+                  {example}
+                </p>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 space-y-3 overflow-auto px-4 py-4">
+    <div className="custom-scrollbar flex-1 space-y-1 overflow-auto px-3 py-3">
       {messages.map((message, index) => (
         <article
           key={`${message.role}-${index}`}
-          className={`rounded-[20px] border px-4 py-4 ${
-            message.role === "assistant"
-              ? "border-[var(--line)] bg-white"
-              : "border-[var(--accent)]/20 bg-[var(--accent-soft)]"
+          className={`rounded-xl px-3 py-3 ${
+            message.role === "user" ? "bg-[var(--panel)]" : ""
           }`}
         >
-          <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">
+          <div className="mb-1 text-[11px] font-medium text-[var(--foreground-muted)]">
             {message.role === "assistant" ? "Assistant" : "You"}
           </div>
-          <div className="mt-3 whitespace-pre-wrap text-[15px] leading-8 text-[var(--foreground)]">
+          <div className="whitespace-pre-wrap text-sm leading-7 text-[var(--foreground)]">
             {message.content}
           </div>
           {message.sources?.length ? (
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-2 flex flex-wrap gap-1.5">
               {message.sources.map((source) => (
                 <span
                   key={`${source.label}-${source.start}-${source.end}`}
                   title={source.excerpt}
-                  className="rounded-full border border-[var(--line)] bg-[var(--panel-soft)] px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]"
+                  className="rounded-md bg-[var(--panel-soft)] px-2 py-1 font-mono text-[10px] text-[var(--foreground-muted)]"
                 >
                   {source.label}
                 </span>
@@ -60,18 +69,18 @@ export function ChatMessageList({
           ) : null}
         </article>
       ))}
-      {isBusy ? (
-        <div className="rounded-[20px] border border-[var(--line)] bg-white px-4 py-4">
-          <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">
+      {isBusy && (
+        <article className="rounded-xl px-3 py-3">
+          <div className="mb-1 text-[11px] font-medium text-[var(--foreground-muted)]">
             Assistant
           </div>
-          <div className="mt-3 space-y-3">
-            <div className="h-3 w-full rounded-full bg-[var(--line)]/55" />
-            <div className="h-3 w-[82%] rounded-full bg-[var(--line)]/55" />
-            <div className="h-3 w-[65%] rounded-full bg-[var(--line)]/55" />
+          <div className="flex items-center gap-1">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--foreground-muted)]" />
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--foreground-muted)] [animation-delay:150ms]" />
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--foreground-muted)] [animation-delay:300ms]" />
           </div>
-        </div>
-      ) : null}
+        </article>
+      )}
     </div>
   );
 }

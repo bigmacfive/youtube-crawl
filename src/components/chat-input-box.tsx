@@ -10,26 +10,29 @@ export function ChatInputBox({
   disabled: boolean;
 }) {
   return (
-    <form
-      onSubmit={onSubmit}
-      className="sticky bottom-0 border-t border-[var(--line)] bg-[var(--panel)] p-4"
-    >
-      <div className="space-y-3 rounded-[20px] border border-[var(--line)] bg-white p-3">
+    <form onSubmit={onSubmit} className="border-t border-[var(--line)] p-3">
+      <div className="rounded-xl border border-[var(--line)] bg-[var(--panel)] transition-colors focus-within:border-[var(--line-strong)]">
         <textarea
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          rows={3}
-          placeholder="Ask about the current transcript. Example: Split the speaker's claims and evidence after 05:00."
-          className="min-h-28 w-full resize-none bg-transparent px-1 py-1 text-sm leading-7 text-[var(--foreground)] outline-none placeholder:text-[var(--muted)]"
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              event.currentTarget.form?.requestSubmit();
+            }
+          }}
+          rows={2}
+          placeholder="Ask about the transcript..."
+          className="w-full resize-none bg-transparent px-3 py-2.5 text-sm leading-6 text-[var(--foreground)] placeholder:text-[var(--foreground-muted)]/40"
         />
-        <div className="flex items-center justify-between gap-3">
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">
-            Transcript-grounded answers with timestamps when available
-          </p>
+        <div className="flex items-center justify-between px-3 pb-2.5">
+          <span className="text-[11px] text-[var(--foreground-muted)]/50">
+            Enter to send
+          </span>
           <button
             type="submit"
             disabled={disabled}
-            className="rounded-full border border-[var(--accent)] bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+            className="rounded-md bg-[var(--foreground)] px-3 py-1 text-xs font-medium text-[var(--background)] transition hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-30"
           >
             Send
           </button>

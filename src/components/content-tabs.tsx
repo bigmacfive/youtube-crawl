@@ -14,7 +14,7 @@ export function ContentTabs({
   onSelect,
 }: ContentTabsProps) {
   return (
-    <div className="flex flex-col gap-3 border-b border-[var(--line)] bg-[var(--panel-soft)]/85 px-4 py-4 sm:px-5">
+    <div className="shrink-0 border-b border-[var(--line)] bg-[var(--panel-soft)]/85 px-4 py-3 sm:px-5">
       <div className="flex flex-wrap items-center gap-2">
         <TabButton
           label="Script"
@@ -35,10 +35,6 @@ export function ContentTabs({
           onClick={() => onSelect("detail")}
         />
       </div>
-      <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">
-        Script opens instantly. Summary and Detail generate only when their tab
-        is opened for the first time.
-      </p>
     </div>
   );
 }

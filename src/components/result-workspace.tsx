@@ -40,8 +40,8 @@ export function ResultWorkspace({
   aiDisabled: boolean;
 }) {
   return (
-    <section className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_392px]">
-      <div className="overflow-hidden rounded-[24px] border border-[var(--line)] bg-[var(--panel)] shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
+    <section className="min-h-0 flex-1 grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_392px]">
+      <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--panel)]">
         <ContentTabs
           activeTab={activeTab}
           summaryState={summaryState}
@@ -49,24 +49,26 @@ export function ResultWorkspace({
           onSelect={onTabChange}
         />
 
-        {activeTab === "script" ? <ScriptView transcript={transcript} /> : null}
-        {activeTab === "summary" ? (
-          <SummaryView
-            state={summaryState}
-            onGenerate={onRequestSummary}
-            disabled={aiDisabled}
-          />
-        ) : null}
-        {activeTab === "detail" ? (
-          <DetailView
-            state={detailState}
-            onGenerate={onRequestDetail}
-            disabled={aiDisabled}
-          />
-        ) : null}
+        <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto">
+          {activeTab === "script" ? <ScriptView transcript={transcript} /> : null}
+          {activeTab === "summary" ? (
+            <SummaryView
+              state={summaryState}
+              onGenerate={onRequestSummary}
+              disabled={aiDisabled}
+            />
+          ) : null}
+          {activeTab === "detail" ? (
+            <DetailView
+              state={detailState}
+              onGenerate={onRequestDetail}
+              disabled={aiDisabled}
+            />
+          ) : null}
+        </div>
       </div>
 
-      <div className="xl:sticky xl:top-5 xl:h-[calc(100vh-40px)]">
+      <div className="flex min-h-0 flex-col">
         <AiChatPanel
           transcript={transcript}
           messages={chatMessages}

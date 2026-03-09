@@ -99,7 +99,8 @@ export function readWorkspaceStorage(): PersistedWorkspace {
   const raw = window.localStorage.getItem(WORKSPACE_STORAGE_KEY);
 
   if (!raw) {
-    return createInitialWorkspace();
+    // Try to restore settings from separate storage
+    return restoreSettingsIntoWorkspace(createInitialWorkspace());
   }
 
   try {
@@ -328,6 +329,41 @@ export function splitDetailSections(content: string) {
           body: content.trim(),
         },
       ];
+}
+
+const SETTINGS_STORAGE_KEY = "transcript-desk.settings";
+
+function restoreSettingsIntoWorkspace(workspace: PersistedWorkspace): PersistedWorkspace {
+  if (typeof window === "undefined") return workspace;
+
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!raw) return workspace;
+    const settings = JSON.parse(raw) as Partial<{
+      provider: AssistantProvider;
+      instruction: string;
+      providerModels: ProviderMap;
+      apiKeys: ProviderMap;
+    }>;
+
+    return {
+      ...workspace,
+      provider:
+        settings.provider === "openai" ||
+        settings.provider === "anthropic" ||
+        settings.provider === "google"
+          ? settings.provider
+          : workspace.provider,
+      instruction:
+        typeof settings.instruction === "string"
+          ? settings.instruction
+          : workspace.instruction,
+      providerModels: mergeProviderMap(settings.providerModels, workspace.providerModels),
+      apiKeys: mergeProviderMap(settings.apiKeys, workspace.apiKeys),
+    };
+  } catch {
+    return workspace;
+  }
 }
 
 function isAssistantMessage(value: unknown): value is AssistantMessage {
