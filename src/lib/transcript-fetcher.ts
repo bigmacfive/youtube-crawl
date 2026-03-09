@@ -43,7 +43,7 @@ function ensurePythonDep(): Promise<void> {
   return new Promise((resolve, reject) => {
     execFile(
       "python3",
-      ["-c", "import youtube_transcript_api"],
+      ["-W", "ignore", "-c", "import youtube_transcript_api"],
       { timeout: 5_000 },
       (error) => {
         if (!error) {
@@ -88,7 +88,7 @@ export async function fetchTranscript(payload: {
   }
 
   return new Promise((resolve, reject) => {
-    execFile("python3", args, { timeout: 30_000 }, (error, stdout, stderr) => {
+    execFile("python3", ["-W", "ignore", ...args], { timeout: 30_000 }, (error, stdout, stderr) => {
       if (error) {
         const stderrText = stderr?.trim() || "";
         let message = "Failed to fetch transcript.";

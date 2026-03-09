@@ -3,6 +3,10 @@
 
 import json
 import sys
+import warnings
+
+# Suppress urllib3/SSL warnings that pollute stderr
+warnings.filterwarnings("ignore")
 
 def main():
     if len(sys.argv) < 2:
