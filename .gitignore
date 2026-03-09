@@ -19,10 +19,13 @@
 
 # production
 /build
+/artifacts
 
 # misc
 .DS_Store
 *.pem
+.venv/
+.python-runtime.json
 
 # debug
 npm-debug.log*

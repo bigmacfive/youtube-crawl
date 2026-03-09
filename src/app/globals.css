@@ -1,26 +1,71 @@
 @import "tailwindcss";
+@import "@fontsource/space-grotesk/400.css";
+@import "@fontsource/space-grotesk/500.css";
+@import "@fontsource/space-grotesk/700.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f4f6fb;
+  --foreground: #2b3038;
+  --muted: #687385;
+  --line: #d8deea;
+  --line-strong: #bcc6d8;
+  --panel: #fcfdff;
+  --panel-soft: #f1f4fa;
+  --panel-strong: #e8edf5;
+  --accent: #4078f2;
+  --accent-soft: #ebf2ff;
+  --accent-strong: #285cc7;
+  --danger: #c23b3b;
+  --danger-soft: #fff1f1;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: "Space Grotesk", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--background);
 }
 
 body {
-  background: var(--background);
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(64, 120, 242, 0.08), transparent 26%),
+    linear-gradient(rgba(132, 150, 181, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(132, 150, 181, 0.08) 1px, transparent 1px),
+    linear-gradient(180deg, #fbfcff 0%, #f4f6fb 100%);
+  background-size:
+    auto,
+    24px 24px,
+    24px 24px,
+    auto;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Space Grotesk", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+textarea {
+  resize: vertical;
+}
+
+::selection {
+  background: var(--accent);
+  color: #ffffff;
 }
