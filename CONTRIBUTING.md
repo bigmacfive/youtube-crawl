@@ -8,13 +8,11 @@ Requirements:
 
 - Node.js 22+
 - npm 10+
-- Python 3
 
-Install dependencies and the local Python worker:
+Install dependencies:
 
 ```bash
 npm install
-npm run setup
 ```
 
 Start the app:

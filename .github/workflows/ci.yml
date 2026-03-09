@@ -20,17 +20,8 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-
       - name: Install npm dependencies
         run: npm ci
-
-      - name: Setup local Python worker
-        run: npm run setup
 
       - name: Lint
         run: npm run lint

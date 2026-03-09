@@ -48,7 +48,7 @@ const segments = [
     duration: 48,
     end: 249,
     timestamp: "03:21",
-    text: "On the backend a small Python worker uses youtube-transcript-api, while the Next.js app handles preview, storage, and provider-specific requests from the browser.",
+    text: "On the backend a pure JavaScript transcript fetcher calls YouTube caption endpoints with multiple client strategies, while the Next.js app handles preview, storage, and provider-specific requests from the browser.",
   },
   {
     start: 249,
@@ -132,7 +132,7 @@ const summaryContent = `TL;DR: A local-first transcript workflow should validate
 ## Timestamp Guide
 - [00:32] Input handling and URL normalization
 - [01:10] Preview-first verification
-- [03:21] Python worker plus Next.js routing
+- [03:21] Pure JS transcript fetcher plus Next.js routing
 - [04:09] Local storage and BYOK privacy model
 
 ## Why It Matters
@@ -155,7 +155,7 @@ Instead of generating everything immediately, the app lets the reader inspect th
 - Retrieval keeps follow-up answers tied to specific transcript chunks.
 
 ## Deeper Breakdown
-The architecture splits responsibility cleanly. Python is used where transcript extraction is more reliable, while Next.js keeps the user flow simple and stores local workspace state in the browser.
+The architecture splits responsibility cleanly. A pure JavaScript transcript fetcher handles YouTube caption retrieval, while Next.js keeps the user flow simple and stores local workspace state in the browser.
 
 The user experience is intentionally staged. Load a link, inspect metadata, read the source, and only then decide whether to summarize or ask follow-up questions.
 

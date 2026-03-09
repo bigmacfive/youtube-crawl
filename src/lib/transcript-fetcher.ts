@@ -1,8 +1,7 @@
 /**
  * Pure JS/fetch transcript fetcher — no Python dependency.
- * Primary: extracts captions from the watch page's embedded player response.
- * Fallback: uses innertube API with WEB client context.
- * Works locally and on Vercel.
+ * Uses innertube API with multiple client strategies.
+ * ANDROID client returns caption URLs without exp=xpe restriction.
  */
 
 export interface TranscriptSegment {
@@ -40,9 +39,6 @@ interface TranslationLanguage {
   languageName: { simpleText?: string; runs?: Array<{ text: string }> };
 }
 
-const USER_AGENT =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type PlayerResponse = {
   captions?: { playerCaptionsTracklistRenderer?: any };
@@ -50,64 +46,137 @@ type PlayerResponse = {
   [k: string]: any;
 };
 
+const USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+
+const ANDROID_UA =
+  "com.google.android.youtube/19.29.37 (Linux; U; Android 14) gzip";
+
+const FALLBACK_API_KEY = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8";
+
 export async function fetchTranscript(payload: {
   videoId: string;
   languages: string[];
 }): Promise<TranscriptResult> {
   const { videoId, languages } = payload;
 
-  // Strategy 1: Extract captions directly from watch page HTML
-  // This avoids a separate API call and works from any IP
-  let playerData: PlayerResponse | null = null;
-
+  // Get visitorData from YouTube homepage (helps avoid bot detection)
+  let visitorData: string | null = null;
   try {
-    const html = await fetchWatchPage(videoId);
-    playerData = extractPlayerResponse(html);
+    visitorData = await getVisitorData();
   } catch {
-    // Watch page extraction failed — try fallback
+    // Continue without visitorData
   }
 
-  // Strategy 2: Innertube API with WEB client (fallback)
-  if (!playerData || !hasCaptions(playerData)) {
+  // Try multiple strategies — ANDROID first (clean URLs without exp=xpe)
+  const strategies: Array<{
+    name: string;
+    fn: () => Promise<PlayerResponse | null>;
+  }> = [
+    {
+      name: "ANDROID",
+      fn: () =>
+        fetchInnertubePlayer(videoId, {
+          context: {
+            client: {
+              clientName: "ANDROID",
+              clientVersion: "19.29.37",
+              androidSdkVersion: 34,
+              hl: "en",
+              gl: "US",
+              ...(visitorData ? { visitorData } : {}),
+            },
+          },
+          userAgent: ANDROID_UA,
+        }),
+    },
+    {
+      name: "ANDROID_EMBEDDED",
+      fn: () =>
+        fetchInnertubePlayer(videoId, {
+          context: {
+            client: {
+              clientName: "ANDROID_EMBEDDED_PLAYER",
+              clientVersion: "19.29.37",
+              androidSdkVersion: 34,
+              hl: "en",
+              gl: "US",
+              ...(visitorData ? { visitorData } : {}),
+            },
+            thirdParty: { embedUrl: "https://www.google.com/" },
+          },
+          userAgent: ANDROID_UA,
+        }),
+    },
+    {
+      name: "WEB",
+      fn: () =>
+        fetchInnertubePlayer(videoId, {
+          context: {
+            client: {
+              clientName: "WEB",
+              clientVersion: "2.20241126.01.00",
+              hl: "en",
+              gl: "US",
+              ...(visitorData ? { visitorData } : {}),
+            },
+          },
+          userAgent: USER_AGENT,
+        }),
+    },
+  ];
+
+  let playerData: PlayerResponse | null = null;
+  let lastError: string | null = null;
+
+  for (const strategy of strategies) {
     try {
-      playerData = await fetchInnertubePlayer(videoId);
-    } catch {
-      // Both strategies failed
+      const result = await strategy.fn();
+      if (!result) continue;
+
+      // Hard error — stop trying
+      const status = result.playabilityStatus?.status;
+      if (status === "ERROR") {
+        throw new Error(
+          result.playabilityStatus?.reason ||
+            `Video ${videoId} is unavailable.`,
+        );
+      }
+
+      // Got captions — use this result
+      if (hasCaptions(result)) {
+        playerData = result;
+        break;
+      }
+
+      // LOGIN_REQUIRED or no captions — try next strategy
+      if (status === "LOGIN_REQUIRED") {
+        lastError =
+          result.playabilityStatus?.reason ||
+          "YouTube is requiring login for this video.";
+        continue;
+      }
+    } catch (err) {
+      if (
+        err instanceof Error &&
+        err.message.includes("unavailable")
+      ) {
+        throw err; // Re-throw hard errors
+      }
+      lastError = err instanceof Error ? err.message : "Unknown error";
     }
   }
 
-  if (!playerData) {
+  if (!playerData || !hasCaptions(playerData)) {
     throw new Error(
-      "Could not retrieve video data from YouTube. Try a different video or try again later.",
+      lastError ||
+        "Could not retrieve captions from YouTube. The video may not have subtitles enabled.",
     );
   }
 
-  // Check playability
-  const playabilityStatus = playerData.playabilityStatus;
-  if (playabilityStatus) {
-    const status = playabilityStatus.status;
-    if (status === "ERROR") {
-      throw new Error(
-        playabilityStatus.reason || `Video ${videoId} is unavailable.`,
-      );
-    }
-    if (status === "LOGIN_REQUIRED") {
-      throw new Error(
-        playabilityStatus.reason || "This video requires login to access.",
-      );
-    }
-  }
-
-  const captionsData = playerData.captions?.playerCaptionsTracklistRenderer;
-  if (!captionsData || !captionsData.captionTracks?.length) {
-    throw new Error(
-      "No captions are available for this video. The video may not have subtitles enabled.",
-    );
-  }
-
+  const captionsData = playerData.captions!.playerCaptionsTracklistRenderer!;
   const captionTracks: CaptionTrack[] = captionsData.captionTracks;
 
-  // Build available languages list
   const availableLanguages: TranscriptLanguageOption[] = captionTracks.map(
     (track: CaptionTrack) => ({
       code: track.languageCode,
@@ -117,16 +186,13 @@ export async function fetchTranscript(payload: {
     }),
   );
 
-  // Pick the best caption track
   const selected = pickTrack(captionTracks, languages);
 
-  // Build fetch URL (strip fmt=srv3, add translation if needed)
   let fetchUrl = selected.track.baseUrl.replace("&fmt=srv3", "");
   if (selected.translateTo) {
     fetchUrl = `${fetchUrl}&tlang=${selected.translateTo}`;
   }
 
-  // Fetch and parse the transcript XML
   const segments = await fetchAndParseTranscript(fetchUrl);
 
   const translationLanguages: TranslationLanguage[] =
@@ -149,159 +215,70 @@ export async function fetchTranscript(payload: {
 }
 
 // ---------------------------------------------------------------------------
-// Watch page fetch + embedded player response extraction
+// Visitor data — helps avoid bot detection
 // ---------------------------------------------------------------------------
 
-async function fetchWatchPage(videoId: string): Promise<string> {
+async function getVisitorData(): Promise<string | null> {
   const response = await fetch(
-    `https://www.youtube.com/watch?v=${videoId}&hl=en`,
+    `https://www.youtube.com/youtubei/v1/visitor_id?key=${FALLBACK_API_KEY}`,
     {
+      method: "POST",
       headers: {
-        "User-Agent": USER_AGENT,
-        "Accept-Language": "en-US,en;q=0.9",
-        Cookie: "CONSENT=PENDING+987",
+        "Content-Type": "application/json",
+        "User-Agent": ANDROID_UA,
       },
+      body: JSON.stringify({
+        context: {
+          client: {
+            clientName: "ANDROID",
+            clientVersion: "19.29.37",
+          },
+        },
+      }),
     },
   );
 
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch YouTube page (status ${response.status}).`,
-    );
-  }
-
-  const html = await response.text();
-
-  // Handle consent redirect
-  if (html.includes('action="https://consent.youtube.com/s"')) {
-    const consentMatch = html.match(/name="v"\s+value="([^"]+)"/);
-    if (consentMatch) {
-      const retryResponse = await fetch(
-        `https://www.youtube.com/watch?v=${videoId}&hl=en`,
-        {
-          headers: {
-            "User-Agent": USER_AGENT,
-            "Accept-Language": "en-US,en;q=0.9",
-            Cookie: `CONSENT=YES+${consentMatch[1]}`,
-          },
-        },
-      );
-      if (retryResponse.ok) {
-        return retryResponse.text();
-      }
-    }
-  }
-
-  return html;
-}
-
-/**
- * Extract ytInitialPlayerResponse from watch page HTML.
- * YouTube embeds the full player response as a JS variable in the page.
- */
-function extractPlayerResponse(html: string): PlayerResponse | null {
-  // Pattern 1: var ytInitialPlayerResponse = {...};
-  const varMatch = html.match(
-    new RegExp(
-      'var\\s+ytInitialPlayerResponse\\s*=\\s*(\\{.+?\\});\\s*(?:var|</script>)',
-      's',
-    ),
-  );
-  if (varMatch) {
-    try {
-      return JSON.parse(varMatch[1]) as PlayerResponse;
-    } catch {
-      // JSON parse failed, try next pattern
-    }
-  }
-
-  // Pattern 2: ytInitialPlayerResponse = JSON.parse('...')
-  // YouTube sometimes uses this with escaped JSON
-  const parseMatch = html.match(
-    new RegExp(
-      "ytInitialPlayerResponse\\s*=\\s*JSON\\.parse\\('(.+?)'\\)",
-      's',
-    ),
-  );
-  if (parseMatch) {
-    try {
-      // Unescape the string (\\x22 → ", etc.)
-      const unescaped = parseMatch[1]
-        .replace(/\\x([0-9a-fA-F]{2})/g, (_, hex) =>
-          String.fromCharCode(parseInt(hex, 16)),
-        )
-        .replace(/\\"/g, '"')
-        .replace(/\\\\/g, "\\");
-      return JSON.parse(unescaped) as PlayerResponse;
-    } catch {
-      // Parse failed
-    }
-  }
-
-  // Pattern 3: window["ytInitialPlayerResponse"]
-  const windowMatch = html.match(
-    new RegExp(
-      'window\\["ytInitialPlayerResponse"\\]\\s*=\\s*(\\{.+?\\});\\s*(?:window|</script>)',
-      's',
-    ),
-  );
-  if (windowMatch) {
-    try {
-      return JSON.parse(windowMatch[1]) as PlayerResponse;
-    } catch {
-      // Parse failed
-    }
-  }
-
-  return null;
-}
-
-function hasCaptions(data: PlayerResponse): boolean {
-  return !!data.captions?.playerCaptionsTracklistRenderer?.captionTracks?.length;
+  if (!response.ok) return null;
+  const data = (await response.json()) as { responseContext?: { visitorData?: string } };
+  return data?.responseContext?.visitorData ?? null;
 }
 
 // ---------------------------------------------------------------------------
-// Innertube API fallback (WEB client — less likely to be blocked than ANDROID)
+// Innertube player API
 // ---------------------------------------------------------------------------
-
-const INNERTUBE_WEB_CONTEXT = {
-  client: {
-    clientName: "WEB",
-    clientVersion: "2.20241126.01.00",
-    hl: "en",
-    gl: "US",
-  },
-};
-
-const FALLBACK_API_KEY = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8";
 
 async function fetchInnertubePlayer(
   videoId: string,
-): Promise<PlayerResponse> {
+  opts: { context: Record<string, unknown>; userAgent: string },
+): Promise<PlayerResponse | null> {
   const response = await fetch(
     `https://www.youtube.com/youtubei/v1/player?key=${FALLBACK_API_KEY}&prettyPrint=false`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "User-Agent": USER_AGENT,
-        Origin: "https://www.youtube.com",
-        Referer: "https://www.youtube.com/",
+        "User-Agent": opts.userAgent,
+        "X-YouTube-Client-Name": "3",
+        "X-YouTube-Client-Version": "19.29.37",
       },
       body: JSON.stringify({
-        context: INNERTUBE_WEB_CONTEXT,
+        ...opts.context,
         videoId,
+        playbackContext: {
+          contentPlaybackContext: { html5Preference: "HTML5_PREF_WANTS" },
+        },
+        contentCheckOk: true,
+        racyCheckOk: true,
       }),
     },
   );
 
-  if (!response.ok) {
-    throw new Error(
-      `YouTube API request failed (status ${response.status}).`,
-    );
-  }
-
+  if (!response.ok) return null;
   return response.json() as Promise<PlayerResponse>;
+}
+
+function hasCaptions(data: PlayerResponse): boolean {
+  return !!data.captions?.playerCaptionsTracklistRenderer?.captionTracks?.length;
 }
 
 // ---------------------------------------------------------------------------
@@ -343,7 +320,6 @@ function pickTrack(
       if (translatable) return { track: translatable, translateTo: lang };
     }
   }
-  // Prefer manual over auto-generated
   const manual = tracks.find((t) => t.kind !== "asr");
   return { track: manual || tracks[0] };
 }
@@ -352,7 +328,7 @@ async function fetchAndParseTranscript(
   url: string,
 ): Promise<TranscriptSegment[]> {
   const response = await fetch(url, {
-    headers: { "User-Agent": USER_AGENT },
+    headers: { "User-Agent": ANDROID_UA },
   });
 
   if (!response.ok) {

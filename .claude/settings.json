@@ -1,7 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx tsx -e ':*)"
+      "Bash(npx tsx -e ':*)",
+      "Bash(node -e \":*)",
+      "Bash(npx tsx -e \":*)",
+      "Bash(npm ls youtubei.js)",
+      "Bash(npm info youtube-transcript version)",
+      "Bash(npm info youtubei.js version)",
+      "Bash(npm install youtube-transcript@latest)",
+      "Bash(npm install youtubei.js@latest)"
     ]
   }
 }
