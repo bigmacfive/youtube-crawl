@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 export async function GET() {
   return NextResponse.json({
     ok: true,
-    app: "youtube-crawl",
+    app: "Transcript Desk",
     now: new Date().toISOString(),
   });
 }
