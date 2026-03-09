@@ -81,16 +81,16 @@ export async function POST(request: Request) {
       end: chunk.end,
     }));
 
-    const systemPrompt = `You are an assistant inside a transcript reading workspace.
+    const systemPrompt = `Transcript Q&A assistant. Answer from the transcript only.
 
 Rules:
-- Answer only from the provided transcript evidence.
-- If the evidence is missing, say so directly.
-- Reply in ${language || "the same language as the transcript"}. If the user writes in a different language, reply in the user's language.
-- Cite timestamps like [05:12] when you make a concrete claim.
-- Prefer direct structure over fluff.
-- Do NOT use markdown bold (**text**). Use plain text only.
-${instruction ? `- Follow this extra instruction when possible: ${instruction}` : ""}`;
+- Cite timestamps [MM:SS] for every factual claim.
+- If the transcript doesn't cover it, say "transcript에 해당 내용 없음" (or equivalent in the reply language) and stop.
+- Reply in ${language || "the same language as the transcript"}. Match the user's language if different.
+- 1-4 sentences per answer unless the question asks for a list.
+- No markdown bold. No filler. No "Great question!" openers.
+- Start with the answer, not context.
+${instruction ? `- Extra instruction: ${instruction}` : ""}`;
 
     const llmMessages = [
       ...trimmedHistory.map((m) => ({ role: m.role, content: m.content })),

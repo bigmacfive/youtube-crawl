@@ -50,48 +50,65 @@ export function ChatMessageList({
     );
   }
 
+  const lastMsg = messages[messages.length - 1];
+  const isStreaming = isBusy && lastMsg?.role === "assistant";
+
   return (
     <div ref={scrollRef} className="custom-scrollbar flex-1 space-y-1 overflow-auto px-3 py-3">
-      {messages.map((message, index) => (
-        <article
-          key={`${message.role}-${index}`}
-          className={`rounded-xl px-3 py-3 ${
-            message.role === "user" ? "bg-[var(--panel)]" : ""
-          }`}
-        >
-          <div className="mb-1 text-[11px] font-medium text-[var(--foreground-muted)]">
-            {message.role === "assistant" ? "Assistant" : "You"}
-          </div>
-          <div className="whitespace-pre-wrap text-sm leading-7 text-[var(--foreground)]">
-            <ChatInlineMarkdown text={message.content} />
-          </div>
-          {message.sources?.length ? (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {message.sources.map((source) => (
-                <span
-                  key={`${source.label}-${source.start}-${source.end}`}
-                  title={source.excerpt}
-                  className="rounded-md bg-[var(--panel-soft)] px-2 py-1 font-mono text-[10px] text-[var(--foreground-muted)]"
-                >
-                  {source.label}
-                </span>
-              ))}
+      {messages.map((message, index) => {
+        const isLastAssistant =
+          index === messages.length - 1 && message.role === "assistant";
+        const isStreamingThis = isStreaming && isLastAssistant;
+        const isEmpty = !message.content;
+
+        // Empty streaming placeholder: show typing dots only
+        if (isStreamingThis && isEmpty) {
+          return (
+            <article key={`${message.role}-${index}`} className="rounded-xl px-3 py-3">
+              <div className="mb-1 text-[11px] font-medium text-[var(--foreground-muted)]">
+                Assistant
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--foreground-muted)]" />
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--foreground-muted)] [animation-delay:150ms]" />
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--foreground-muted)] [animation-delay:300ms]" />
+              </div>
+            </article>
+          );
+        }
+
+        return (
+          <article
+            key={`${message.role}-${index}`}
+            className={`rounded-xl px-3 py-3 ${
+              message.role === "user" ? "bg-[var(--panel)]" : ""
+            }`}
+          >
+            <div className="mb-1 text-[11px] font-medium text-[var(--foreground-muted)]">
+              {message.role === "assistant" ? "Assistant" : "You"}
             </div>
-          ) : null}
-        </article>
-      ))}
-      {isBusy && (
-        <article className="rounded-xl px-3 py-3">
-          <div className="mb-1 text-[11px] font-medium text-[var(--foreground-muted)]">
-            Assistant
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--foreground-muted)]" />
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--foreground-muted)] [animation-delay:150ms]" />
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--foreground-muted)] [animation-delay:300ms]" />
-          </div>
-        </article>
-      )}
+            <div className="whitespace-pre-wrap text-sm leading-7 text-[var(--foreground)]">
+              <ChatInlineMarkdown text={message.content} />
+              {isStreamingThis && (
+                <span className="ml-0.5 inline-block h-3.5 w-[3px] translate-y-[2px] animate-pulse rounded-sm bg-[var(--foreground-muted)]" />
+              )}
+            </div>
+            {!isStreamingThis && message.sources?.length ? (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {message.sources.map((source) => (
+                  <span
+                    key={`${source.label}-${source.start}-${source.end}`}
+                    title={source.excerpt}
+                    className="rounded-md bg-[var(--panel-soft)] px-2 py-1 font-mono text-[10px] text-[var(--foreground-muted)]"
+                  >
+                    {source.label}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </article>
+        );
+      })}
     </div>
   );
 }
