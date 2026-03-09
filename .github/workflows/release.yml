@@ -34,7 +34,6 @@ jobs:
         run: pip install youtube-transcript-api
 
       - name: Import code signing certificate
-        if: ${{ secrets.APPLE_CERTIFICATE_P12 != '' }}
         env:
           APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
