@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import type { VideoHistoryEntry } from "@/lib/history";
 import {
@@ -23,12 +23,7 @@ export function TranscriptWorkbench() {
   const router = useRouter();
   const { workspace, setWorkspace, isHydrated } = usePersistedWorkspace();
   const [error, setError] = useState("");
-  const [history, setHistory] = useState<VideoHistoryEntry[]>([]);
-
-  useEffect(() => {
-    if (!isHydrated) return;
-    setHistory(readHistory());
-  }, [isHydrated]);
+  const [history, setHistory] = useState<VideoHistoryEntry[]>(() => readHistory());
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

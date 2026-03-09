@@ -1,15 +1,44 @@
-# Transcript Desk
+# youtube-crawl
 
-Minimal local-first YouTube transcript workstation.
+[![CI](https://github.com/bigmacfive/youtube-crawl/actions/workflows/ci.yml/badge.svg)](https://github.com/bigmacfive/youtube-crawl/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-black.svg)](./LICENSE)
 
-Paste a YouTube link, review the channel and video metadata, then move into a transcript-first workspace. You can use your own OpenAI, Claude, or Google API key to:
+English | [한국어](./README.ko.md)
 
-- generate an English summary
-- generate a detailed breakdown on demand
-- chat against the transcript
-- copy or download the raw script as `txt` or `json`
+Local-first YouTube transcript desk for loading a video, checking metadata, reading the raw transcript, and optionally generating summary, detail notes, or transcript-aware chat with your own OpenAI, Claude, or Google API key.
 
-The app is designed to run locally and stay fully open-source.
+![Summary view](./output/playwright/readme/summary.png)
+
+## Why youtube-crawl
+
+- Preview the source before spending tokens on analysis.
+- Keep the raw transcript as the default workspace.
+- Generate summary and detail views only when a tab is opened.
+- Bring your own API key and keep it in local browser storage.
+- Save recent transcript workspaces on the current device.
+- Use a local Python worker for subtitle extraction.
+
+## Product Tour
+
+| Home | Preview |
+| --- | --- |
+| ![Home page](./output/playwright/readme/home.png) | ![Preview page](./output/playwright/readme/preview.png) |
+
+| Workspace | Settings |
+| --- | --- |
+| ![Workspace page](./output/playwright/readme/workspace.png) | ![Settings page](./output/playwright/readme/settings.png) |
+
+## App Flow
+
+```mermaid
+flowchart LR
+    A["Paste a YouTube link"] --> B["Load transcript preview"]
+    B --> C["Inspect metadata and opening lines"]
+    C --> D["Open transcript workspace"]
+    D --> E["Read raw transcript"]
+    E --> F["Generate summary or detail on demand"]
+    E --> G["Ask transcript-aware follow-up questions"]
+```
 
 ## Stack
 
@@ -17,37 +46,24 @@ The app is designed to run locally and stay fully open-source.
 - React 19
 - Tailwind CSS 4
 - `youtube-transcript-api` through a local Python worker
+- Bring-your-own OpenAI, Claude, and Google provider support
 
-## Features
-
-- Link input page that only focuses on loading the video
-- Separate preview page for channel and video metadata
-- Separate settings page for provider, model, API key, and caption language
-- Transcript-first workspace with a document panel and AI side panel
-- Summary and Detail generation only when the corresponding tab is opened
-- Watch URL, short URL, and raw video id support
-- Full transcript plus timestamped transcript output
-- Local Python worker for more reliable subtitle extraction
-- Bring-your-own-key AI panel for OpenAI, Claude, and Google
-- Local browser storage for transcript state, active tab, generated documents, chat history, and API settings
-- Transcript-aware chat that selects relevant chunks instead of sending the whole wall of text each turn
-- Minimal One Light inspired UI
-
-## Local Run
+## Quick Start
 
 Requirements:
 
 - Node.js 22+
+- npm 10+
 - Python 3
 
-Install dependencies and prepare the local Python worker:
+Install dependencies and prepare the Python worker:
 
 ```bash
 npm install
 npm run setup
 ```
 
-Start the app:
+Start the local app:
 
 ```bash
 npm run dev
@@ -55,45 +71,34 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## App Flow
-
-1. `/`: paste a YouTube link and load the transcript
-2. `/preview`: inspect the channel and video metadata
-3. `/workspace`: read the raw transcript first, then request Summary, Detail, or chat
-4. `/settings`: manage API keys, model defaults, instruction, and caption language
-
-## How It Works
-
-1. The frontend sends the pasted YouTube link to `/api/transcript`.
-2. The Next.js route calls `scripts/fetch_transcript.py`.
-3. The Python worker uses `youtube-transcript-api` to fetch subtitle tracks.
-4. The app stores transcript and workspace state in local browser storage.
-5. The preview page shows the fetched video metadata before entering the workspace.
-6. The workspace renders the raw transcript immediately and only generates Summary or Detail when the user opens those tabs.
-7. Summary, Detail, and chat requests go through `/api/assistant` using the provider and API key that the user enters.
-
-API keys are not persisted by the server. They are cached only in local browser storage on the current device and sent only with each local request from the browser tab.
-
 ## Scripts
 
-- `npm run setup`: create `.venv`, install Python dependencies, and write local runtime config
-- `npm run dev`: start the local development server
-- `npm run build`: production build
+- `npm run setup`: create `.venv`, install Python requirements, and write runtime config
+- `npm run dev`: start the Next.js development server
+- `npm run build`: create a production build
 - `npm run lint`: run ESLint
-- `npm run desktop:dev`: run the web server and Electrobun desktop app together
-- `npm run desktop:build`: bundle the Next app and build the Electrobun desktop app
-- `npm run desktop:run`: run the packaged Electrobun app entrypoint
+- `npm run desktop:dev`: run the web app and Electrobun shell together
+- `npm run desktop:build`: bundle the desktop build
+- `npm run desktop:run`: run the packaged desktop entrypoint
+
+## Project Docs
+
+- [Contributing](./CONTRIBUTING.md)
+- [Code of Conduct](./CODE_OF_CONDUCT.md)
+- [Security Policy](./SECURITY.md)
+- [Bug and feature request templates](./.github/ISSUE_TEMPLATE)
+- [Pull request template](./.github/pull_request_template.md)
+- [CI workflow](./.github/workflows/ci.yml)
 
 ## Verification
 
-The project was verified locally with:
+The repository has been checked locally with:
 
 - `npm run setup`
 - `npm run lint`
 - `npm run build`
-- `POST /api/transcript` against `https://www.youtube.com/watch?v=jNQXAC9IVRw`
 
-End-to-end AI generation still requires real provider API keys.
+README screenshots were generated with Playwright using [`scripts/capture-readme-screenshots.mjs`](./scripts/capture-readme-screenshots.mjs).
 
 ## License
 

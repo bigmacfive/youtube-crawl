@@ -1,7 +1,30 @@
 {
   "name": "youtube-crawl",
   "version": "0.1.0",
+  "description": "Local-first YouTube transcript desk with preview, workspace, and bring-your-own AI providers.",
   "private": true,
+  "license": "MIT",
+  "homepage": "https://github.com/bigmacfive/youtube-crawl#readme",
+  "bugs": {
+    "url": "https://github.com/bigmacfive/youtube-crawl/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bigmacfive/youtube-crawl.git"
+  },
+  "keywords": [
+    "youtube",
+    "transcript",
+    "nextjs",
+    "openai",
+    "anthropic",
+    "gemini",
+    "local-first"
+  ],
+  "engines": {
+    "node": ">=22",
+    "npm": ">=10"
+  },
   "scripts": {
     "setup": "node scripts/setup-python.mjs",
     "dev:web": "next dev",

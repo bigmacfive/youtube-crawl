@@ -14,11 +14,7 @@ import { WorkspaceNav } from "@/components/workspace-nav";
 
 export function SettingsPageClient() {
   const { workspace, setWorkspace, isHydrated } = usePersistedWorkspace();
-  const [theme, setTheme] = useState<Theme>("light");
-
-  useEffect(() => {
-    setTheme(getStoredTheme());
-  }, []);
+  const [theme, setTheme] = useState<Theme>(() => getStoredTheme());
 
   // Persist settings separately for stability
   useEffect(() => {
@@ -69,12 +65,6 @@ export function SettingsPageClient() {
       ...previous,
       apiKeys: createEmptyProviderMap(),
     }));
-  }
-
-  function toggleTheme() {
-    const next = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    setStoredTheme(next);
   }
 
   if (!isHydrated) {
