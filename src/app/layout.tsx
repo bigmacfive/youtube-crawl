@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "youtube-crawl",
+  title: "Transcript Desk",
   description:
-    "Local-first YouTube transcript extraction with bring-your-own OpenAI, Claude, and Google API keys.",
+    "Local-first YouTube transcript workspace with bring-your-own AI providers.",
 };
 
 // Inline script to apply theme before paint (prevents flash)

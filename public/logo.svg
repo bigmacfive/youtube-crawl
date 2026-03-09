@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- Background rounded square -->
+  <rect width="512" height="512" rx="112" fill="#0F0F0F"/>
+
+  <!-- Play triangle (subtle, offset left) -->
+  <path d="M152 164 L152 348 L296 256 Z" fill="#FFFFFF" opacity="0.12"/>
+
+  <!-- Transcript lines -->
+  <rect x="168" y="196" width="200" height="4" rx="2" fill="#FFFFFF" opacity="0.85"/>
+  <rect x="168" y="228" width="160" height="4" rx="2" fill="#FFFFFF" opacity="0.55"/>
+  <rect x="168" y="260" width="180" height="4" rx="2" fill="#FFFFFF" opacity="0.85"/>
+  <rect x="168" y="292" width="140" height="4" rx="2" fill="#FFFFFF" opacity="0.55"/>
+  <rect x="168" y="324" width="120" height="4" rx="2" fill="#FFFFFF" opacity="0.35"/>
+
+  <!-- Cursor / active line indicator -->
+  <rect x="144" y="256" width="3" height="16" rx="1.5" fill="#FFFFFF"/>
+</svg>

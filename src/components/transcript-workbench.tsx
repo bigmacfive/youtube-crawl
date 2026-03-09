@@ -103,7 +103,7 @@ export function TranscriptWorkbench() {
       <div className={`custom-scrollbar mx-auto flex w-full max-w-[1600px] flex-1 flex-col overflow-y-auto ${hasHistory ? "pt-10" : "items-center justify-center pb-20"}`}>
         <div className={`${hasHistory ? "" : "flex flex-col items-center"} w-full`}>
           <h1 className="mb-1 text-lg font-semibold text-[var(--foreground)]">
-            youtube-crawl
+            Transcript Desk
           </h1>
           <p className="mb-8 text-sm text-[var(--foreground-muted)]">
             Paste a link to get started

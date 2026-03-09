@@ -17,7 +17,7 @@ export function WorkspaceNav({
           href="/"
           className="text-sm font-semibold text-[var(--foreground)] transition hover:opacity-70"
         >
-          youtube-crawl
+          Transcript Desk
         </Link>
         {backHref && backLabel ? (
           <>
