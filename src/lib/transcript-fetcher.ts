@@ -41,11 +41,14 @@ interface TranslationLanguage {
 }
 
 const USER_AGENT =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
 const INNERTUBE_CONTEXT = {
   client: { clientName: "ANDROID", clientVersion: "20.10.38" },
 };
+
+// Well-known innertube API key (public, used by all YouTube clients)
+const FALLBACK_API_KEY = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8";
 
 export async function fetchTranscript(payload: {
   videoId: string;
@@ -53,17 +56,46 @@ export async function fetchTranscript(payload: {
 }): Promise<TranscriptResult> {
   const { videoId, languages } = payload;
 
-  // 1. Fetch the YouTube watch page to get the innertube API key
-  const html = await fetchWatchPage(videoId);
-  const apiKey = extractInnertubeApiKey(html, videoId);
+  // 1. Try to get API key from watch page, fall back to well-known key
+  let apiKey = FALLBACK_API_KEY;
+  try {
+    const html = await fetchWatchPage(videoId);
+    const extractedKey = extractInnertubeApiKey(html);
+    if (extractedKey) apiKey = extractedKey;
+  } catch {
+    // Watch page fetch failed (consent, blocking, etc.) — continue with fallback key
+  }
 
   // 2. Call the innertube player API (Android client) to get caption URLs
-  //    Android client returns URLs without exp=xpe restriction
   const playerData = await fetchInnertubePlayer(videoId, apiKey);
+
+  // Check playability
+  const playabilityStatus = playerData?.playabilityStatus;
+  if (playabilityStatus) {
+    const status = playabilityStatus.status;
+    if (status === "ERROR") {
+      throw new Error(
+        playabilityStatus.reason || `Video ${videoId} is unavailable.`,
+      );
+    }
+    if (status === "LOGIN_REQUIRED") {
+      const reason = playabilityStatus.reason || "";
+      if (reason.includes("bot")) {
+        throw new Error(
+          "YouTube is blocking this request. Try again later.",
+        );
+      }
+      throw new Error(
+        reason || "This video requires login to access.",
+      );
+    }
+  }
 
   const captionsData = playerData?.captions?.playerCaptionsTracklistRenderer;
   if (!captionsData || !captionsData.captionTracks?.length) {
-    throw new Error("No captions are available for this video.");
+    throw new Error(
+      "No captions are available for this video. The video may not have subtitles enabled.",
+    );
   }
 
   const captionTracks: CaptionTrack[] = captionsData.captionTracks;
@@ -115,7 +147,8 @@ async function fetchWatchPage(videoId: string): Promise<string> {
     {
       headers: {
         "User-Agent": USER_AGENT,
-        "Accept-Language": "en-US",
+        "Accept-Language": "en-US,en;q=0.9",
+        Cookie: "CONSENT=PENDING+987",
       },
     },
   );
@@ -126,22 +159,35 @@ async function fetchWatchPage(videoId: string): Promise<string> {
     );
   }
 
-  return response.text();
+  const html = await response.text();
+
+  // Check for consent page
+  if (html.includes('action="https://consent.youtube.com/s"')) {
+    // Extract consent value and retry
+    const consentMatch = html.match(/name="v"\s+value="([^"]+)"/);
+    if (consentMatch) {
+      const retryResponse = await fetch(
+        `https://www.youtube.com/watch?v=${videoId}`,
+        {
+          headers: {
+            "User-Agent": USER_AGENT,
+            "Accept-Language": "en-US,en;q=0.9",
+            Cookie: `CONSENT=YES+${consentMatch[1]}`,
+          },
+        },
+      );
+      if (retryResponse.ok) {
+        return retryResponse.text();
+      }
+    }
+  }
+
+  return html;
 }
 
-function extractInnertubeApiKey(html: string, videoId: string): string {
+function extractInnertubeApiKey(html: string): string | null {
   const match = html.match(/"INNERTUBE_API_KEY":\s*"([a-zA-Z0-9_-]+)"/);
-  if (match && match[1]) {
-    return match[1];
-  }
-  if (html.includes('class="g-recaptcha"')) {
-    throw new Error(
-      `YouTube is blocking requests (IP rate-limited). Try again later.`,
-    );
-  }
-  throw new Error(
-    `Could not extract YouTube API key for video ${videoId}. The video may be unavailable.`,
-  );
+  return match?.[1] ?? null;
 }
 
 async function fetchInnertubePlayer(
@@ -149,7 +195,7 @@ async function fetchInnertubePlayer(
   apiKey: string,
 ): Promise<InnertubePlayerResponse> {
   const response = await fetch(
-    `https://www.youtube.com/youtubei/v1/player?key=${apiKey}`,
+    `https://www.youtube.com/youtubei/v1/player?key=${apiKey}&prettyPrint=false`,
     {
       method: "POST",
       headers: {
@@ -165,7 +211,7 @@ async function fetchInnertubePlayer(
 
   if (!response.ok) {
     throw new Error(
-      `YouTube innertube API request failed (status ${response.status}).`,
+      `YouTube API request failed (status ${response.status}).`,
     );
   }
 
@@ -173,7 +219,11 @@ async function fetchInnertubePlayer(
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type InnertubePlayerResponse = { captions?: { playerCaptionsTracklistRenderer?: any }; [k: string]: any };
+type InnertubePlayerResponse = {
+  captions?: { playerCaptionsTracklistRenderer?: any };
+  playabilityStatus?: { status?: string; reason?: string };
+  [k: string]: any;
+};
 
 function extractTrackLabel(track: CaptionTrack): string {
   if (track.name?.simpleText) return track.name.simpleText;

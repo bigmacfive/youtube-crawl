@@ -26,7 +26,6 @@
     "npm": ">=10"
   },
   "scripts": {
-    "setup": "node scripts/setup-python.mjs",
     "dev:web": "next dev",
     "dev": "next dev",
     "build:web": "next build",

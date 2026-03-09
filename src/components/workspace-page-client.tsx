@@ -410,11 +410,3 @@ function getContent(value: unknown) {
   return typeof record.content === "string" ? record.content : "";
 }
 
-function getSources(value: unknown) {
-  if (!value || typeof value !== "object") {
-    return [];
-  }
-
-  const record = value as { sources?: unknown };
-  return Array.isArray(record.sources) ? record.sources : [];
-}
