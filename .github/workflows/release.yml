@@ -74,6 +74,16 @@ jobs:
       - name: Build Next.js
         run: npm run build:web
 
+      - name: Sign native binaries in standalone build
+        env:
+          ELECTROBUN_DEVELOPER_ID: ${{ secrets.ELECTROBUN_DEVELOPER_ID }}
+        run: |
+          # Sign all .dylib and .node files so notarization passes
+          find .next/standalone -type f \( -name "*.dylib" -o -name "*.node" \) | while read -r bin; do
+            echo "Signing: $bin"
+            codesign --force --sign "$ELECTROBUN_DEVELOPER_ID" --timestamp "$bin"
+          done
+
       - name: Build Electrobun DMG
         env:
           ELECTROBUN_BUNDLE_NEXT: "1"
