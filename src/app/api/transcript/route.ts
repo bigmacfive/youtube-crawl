@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import type { TranscriptPayload } from "@/lib/contracts";
-import { fetchTranscriptWithPython } from "@/lib/python";
+import { fetchTranscript } from "@/lib/transcript-fetcher";
 import {
   canonicalYoutubeUrl,
   countWords,
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     const canonicalUrl = canonicalYoutubeUrl(videoId);
 
     const [transcriptResult, metadata] = await Promise.all([
-      fetchTranscriptWithPython({
+      fetchTranscript({
         videoId,
         languages: preferredLanguage ? [preferredLanguage] : [],
       }),

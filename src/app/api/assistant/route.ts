@@ -31,6 +31,8 @@ export async function POST(request: Request) {
         : null;
     const instruction =
       typeof body?.instruction === "string" ? body.instruction.trim() : "";
+    const language =
+      typeof body?.language === "string" ? body.language.trim() : "";
     const transcript =
       typeof body?.transcript === "string" ? body.transcript.trim() : "";
     const segments = sanitizeSegments(body?.segments);
@@ -61,6 +63,7 @@ export async function POST(request: Request) {
               model,
               transcript: sourceText,
               instruction,
+              language,
             })
           : await generateDetailDocument({
               provider,
@@ -68,6 +71,7 @@ export async function POST(request: Request) {
               model,
               transcript: sourceText,
               instruction,
+              language,
             });
 
       return NextResponse.json({ content });
@@ -96,6 +100,7 @@ export async function POST(request: Request) {
       apiKey,
       model,
       instruction,
+      language,
       question,
       history,
       segments,
@@ -120,13 +125,17 @@ async function generateSummaryDocument(input: {
   model: string;
   transcript: string;
   instruction: string;
+  language: string;
 }) {
+  const lang = input.language || "the same language as the transcript";
   return generateTranscriptDocument({
     ...input,
     chunkMaxLength: 11000,
     chunkInstruction:
-      "Summarize this transcript chunk for a fast reader. Focus on the core idea, the strongest points, and timestamps worth citing.",
+      `Summarize this transcript chunk for a fast reader. Focus on the core idea, the strongest points, and timestamps worth citing. Write in ${lang}.`,
     mergeInstruction: `Create a short, fast summary for a reader who wants signal first.
+
+IMPORTANT: Write the entire output in ${lang}.
 
 Output format:
 TL;DR: one short paragraph
@@ -137,7 +146,7 @@ TL;DR: one short paragraph
 ## Why It Matters
 1 short paragraph
 
-Keep it concise. Use English unless the extra instruction clearly asks otherwise.`,
+Keep it concise. Do NOT use markdown bold (**text**) — use plain text only.`,
     maxOutputTokens: 900,
   });
 }
@@ -148,13 +157,17 @@ async function generateDetailDocument(input: {
   model: string;
   transcript: string;
   instruction: string;
+  language: string;
 }) {
+  const lang = input.language || "the same language as the transcript";
   return generateTranscriptDocument({
     ...input,
     chunkMaxLength: 9000,
     chunkInstruction:
-      "Turn this transcript chunk into analyst notes with themes, context, evidence, and timestamps.",
+      `Turn this transcript chunk into analyst notes with themes, context, evidence, and timestamps. Write in ${lang}.`,
     mergeInstruction: `Create a detailed structured reading companion from the transcript.
+
+IMPORTANT: Write the entire output in ${lang}.
 
 Output format:
 ## Executive Frame
@@ -168,7 +181,7 @@ Use multiple ## headings by topic
 ## Practical Takeaways
 - actionable bullets if any
 
-Make the output rich enough for careful reading. Use English unless the extra instruction clearly asks otherwise.`,
+Make the output rich enough for careful reading. Do NOT use markdown bold (**text**) — use plain text only.`,
     maxOutputTokens: 1400,
   });
 }
@@ -265,6 +278,7 @@ async function answerTranscriptQuestion(input: {
   apiKey: string;
   model: string;
   instruction: string;
+  language: string;
   question: string;
   history: AssistantMessage[];
   segments: TranscriptSegment[];
@@ -305,9 +319,10 @@ async function answerTranscriptQuestion(input: {
 Rules:
 - Answer only from the provided transcript evidence.
 - If the evidence is missing, say so directly.
-- Reply in the same language as the latest user question.
+- Reply in ${input.language || "the same language as the transcript"}. If the user writes in a different language, reply in the user's language.
 - Cite timestamps like [05:12] when you make a concrete claim.
 - Prefer direct structure over fluff.
+- Do NOT use markdown bold (**text**). Use plain text only.
 ${
   input.instruction
     ? `- Follow this extra instruction when possible: ${input.instruction}`

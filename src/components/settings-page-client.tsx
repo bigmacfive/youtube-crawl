@@ -191,18 +191,11 @@ export function SettingsPageClient() {
             {/* API config */}
             <section className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-6">
               <div className="grid gap-4">
-                <label className="grid gap-2">
-                  <span className="text-xs font-medium uppercase tracking-[0.18em] text-[var(--muted)]">
-                    API Key
-                  </span>
-                  <input
-                    type="password"
-                    value={currentApiKey}
-                    onChange={(event) => updateCurrentApiKey(event.target.value)}
-                    placeholder={currentProvider.keyPlaceholder}
-                    className="min-h-14 rounded-xl border border-[var(--line)] bg-[var(--panel-soft)] px-4 text-sm outline-none placeholder:text-[var(--muted)] focus:border-[var(--line-strong)]"
-                  />
-                </label>
+                <ApiKeyField
+                  value={currentApiKey}
+                  onChange={updateCurrentApiKey}
+                  placeholder={currentProvider.keyPlaceholder}
+                />
 
                 <label className="grid gap-2">
                   <span className="text-xs font-medium uppercase tracking-[0.18em] text-[var(--muted)]">
@@ -236,5 +229,57 @@ export function SettingsPageClient() {
         </section>
       </div>
     </main>
+  );
+}
+
+function maskApiKey(key: string): string {
+  if (!key) return "";
+  if (key.length <= 8) return "***";
+  return key.slice(0, 4) + "***" + key.slice(-4);
+}
+
+function ApiKeyField({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+}) {
+  const [editing, setEditing] = useState(false);
+
+  if (editing || !value) {
+    return (
+      <label className="grid gap-2">
+        <span className="text-xs font-medium uppercase tracking-[0.18em] text-[var(--muted)]">
+          API Key
+        </span>
+        <input
+          type="text"
+          autoFocus={editing}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={() => setEditing(false)}
+          placeholder={placeholder}
+          className="min-h-14 rounded-xl border border-[var(--line)] bg-[var(--panel-soft)] px-4 text-sm outline-none placeholder:text-[var(--muted)] focus:border-[var(--line-strong)]"
+        />
+      </label>
+    );
+  }
+
+  return (
+    <div className="grid gap-2">
+      <span className="text-xs font-medium uppercase tracking-[0.18em] text-[var(--muted)]">
+        API Key
+      </span>
+      <button
+        type="button"
+        onClick={() => setEditing(true)}
+        className="flex min-h-14 items-center rounded-xl border border-[var(--line)] bg-[var(--panel-soft)] px-4 text-left text-sm text-[var(--foreground)] transition hover:border-[var(--line-strong)]"
+      >
+        <span className="font-mono tracking-wider">{maskApiKey(value)}</span>
+      </button>
+    </div>
   );
 }

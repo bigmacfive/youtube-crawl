@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { AssistantMessage } from "@/lib/contracts";
 
 export function ChatMessageList({
@@ -52,7 +54,7 @@ export function ChatMessageList({
             {message.role === "assistant" ? "Assistant" : "You"}
           </div>
           <div className="whitespace-pre-wrap text-sm leading-7 text-[var(--foreground)]">
-            {message.content}
+            <ChatInlineMarkdown text={message.content} />
           </div>
           {message.sources?.length ? (
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -83,4 +85,45 @@ export function ChatMessageList({
       )}
     </div>
   );
+}
+
+function ChatInlineMarkdown({ text }: { text: string }) {
+  const nodes: ReactNode[] = [];
+  const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`)/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      nodes.push(text.slice(lastIndex, match.index));
+    }
+
+    if (match[2]) {
+      nodes.push(
+        <strong key={key++} className="font-semibold">
+          {match[2]}
+        </strong>,
+      );
+    } else if (match[3]) {
+      nodes.push(<em key={key++}>{match[3]}</em>);
+    } else if (match[4]) {
+      nodes.push(
+        <code
+          key={key++}
+          className="rounded bg-[var(--panel-strong)] px-1.5 py-0.5 font-mono text-[13px]"
+        >
+          {match[4]}
+        </code>,
+      );
+    }
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    nodes.push(text.slice(lastIndex));
+  }
+
+  return <>{nodes.length > 0 ? nodes : text}</>;
 }
