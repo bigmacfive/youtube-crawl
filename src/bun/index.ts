@@ -100,12 +100,12 @@ function createMainWindow(url: string) {
     title: APP_TITLE,
     url,
     renderer: "native",
-    titleBarStyle: "default",
+    titleBarStyle: "hiddenInset",
     frame: {
-      width: 1480,
-      height: 980,
-      x: 120,
-      y: 70,
+      width: 1120,
+      height: 760,
+      x: 160,
+      y: 100,
     },
   });
 }

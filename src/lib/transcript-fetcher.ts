@@ -1,6 +1,7 @@
 /**
  * Transcript fetcher — calls Python youtube_transcript_api via subprocess.
  * YouTube now requires Proof of Origin Tokens that only the Python library handles.
+ * Auto-installs the Python dependency on first use if missing.
  */
 
 import { execFile } from "node:child_process";
@@ -34,10 +35,51 @@ const SCRIPT_PATH = resolve(
   "fetch-transcript.py",
 );
 
-export function fetchTranscript(payload: {
+let depChecked = false;
+
+function ensurePythonDep(): Promise<void> {
+  if (depChecked) return Promise.resolve();
+
+  return new Promise((resolve, reject) => {
+    execFile(
+      "python3",
+      ["-c", "import youtube_transcript_api"],
+      { timeout: 5_000 },
+      (error) => {
+        if (!error) {
+          depChecked = true;
+          resolve();
+          return;
+        }
+        // Auto-install
+        execFile(
+          "pip3",
+          ["install", "--user", "youtube-transcript-api"],
+          { timeout: 60_000 },
+          (installErr, _stdout, installStderr) => {
+            if (installErr) {
+              reject(
+                new Error(
+                  `youtube-transcript-api 설치 실패. 수동 설치: pip3 install youtube-transcript-api\n${installStderr}`,
+                ),
+              );
+              return;
+            }
+            depChecked = true;
+            resolve();
+          },
+        );
+      },
+    );
+  });
+}
+
+export async function fetchTranscript(payload: {
   videoId: string;
   languages: string[];
 }): Promise<TranscriptResult> {
+  await ensurePythonDep();
+
   const { videoId, languages } = payload;
   const args = [SCRIPT_PATH, videoId];
 
@@ -48,19 +90,16 @@ export function fetchTranscript(payload: {
   return new Promise((resolve, reject) => {
     execFile("python3", args, { timeout: 30_000 }, (error, stdout, stderr) => {
       if (error) {
-        // Try to extract a meaningful message from stderr
         const stderrText = stderr?.trim() || "";
         let message = "Failed to fetch transcript.";
 
         if (stderrText) {
-          // Try to parse JSON error from stderr
           try {
             const parsed = JSON.parse(stderrText) as { error?: string };
             if (parsed.error) {
               message = parsed.error;
             }
           } catch {
-            // Use last line of stderr as message (skip warnings)
             const lines = stderrText.split("\n").filter(Boolean);
             const lastLine = lines[lines.length - 1] || "";
             if (lastLine.includes("Error") || lastLine.includes("error")) {

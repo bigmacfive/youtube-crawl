@@ -75,6 +75,22 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* Desktop: extra top padding for hidden title bar (traffic lights) */
+@supports (-webkit-app-region: drag) {
+  body {
+    padding-top: env(titlebar-area-height, 0px);
+  }
+}
+
+/* Desktop title bar drag region */
+.titlebar-drag {
+  -webkit-app-region: drag;
+}
+
+.titlebar-no-drag {
+  -webkit-app-region: no-drag;
+}
+
 button,
 input,
 textarea,

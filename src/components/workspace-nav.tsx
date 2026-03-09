@@ -11,8 +11,8 @@ export function WorkspaceNav({
   children?: ReactNode;
 }) {
   return (
-    <header className="flex h-10 shrink-0 items-center justify-between gap-4 px-1">
-      <div className="flex items-center gap-2">
+    <header className="titlebar-drag flex h-10 shrink-0 items-center justify-between gap-4 px-1 pl-[76px]">
+      <div className="titlebar-no-drag flex items-center gap-2">
         <Link
           href="/"
           className="text-sm font-semibold text-[var(--foreground)] transition hover:opacity-70"
@@ -31,7 +31,7 @@ export function WorkspaceNav({
           </>
         ) : null}
       </div>
-      <div className="flex items-center gap-2">{children}</div>
+      <div className="titlebar-no-drag flex items-center gap-2">{children}</div>
     </header>
   );
 }

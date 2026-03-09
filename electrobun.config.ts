@@ -25,6 +25,7 @@ export default {
       : undefined,
     mac: {
       bundleCEF: false,
+      icons: "icon.iconset",
       codesign: !!process.env.ELECTROBUN_DEVELOPER_ID,
       notarize: !!process.env.ELECTROBUN_APPLEID,
     },
