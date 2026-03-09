@@ -2,6 +2,7 @@
  * Transcript fetcher — calls Python youtube_transcript_api via subprocess.
  * YouTube now requires Proof of Origin Tokens that only the Python library handles.
  * Auto-installs the Python dependency on first use if missing.
+ * Retries up to 2 times on transient YouTube failures.
  */
 
 import { execFile } from "node:child_process";
@@ -51,7 +52,6 @@ function ensurePythonDep(): Promise<void> {
           resolve();
           return;
         }
-        // Auto-install
         execFile(
           "pip3",
           ["install", "--user", "youtube-transcript-api"],
@@ -74,6 +74,71 @@ function ensurePythonDep(): Promise<void> {
   });
 }
 
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 1500;
+
+function delay(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function parseStderrMessage(stderr: string): string {
+  const stderrText = stderr.trim();
+  if (!stderrText) return "Failed to fetch transcript.";
+
+  const lines = stderrText.split("\n").filter(Boolean);
+  for (const candidate of [stderrText, lines[lines.length - 1] || ""]) {
+    try {
+      const obj = JSON.parse(candidate) as { error?: string };
+      if (obj.error) return obj.error;
+    } catch {}
+  }
+
+  const lastLine = lines[lines.length - 1] || "";
+  if (lastLine.includes("Error") || lastLine.includes("error")) {
+    return lastLine;
+  }
+  return "Failed to fetch transcript.";
+}
+
+function runPythonScript(args: string[]): Promise<TranscriptResult> {
+  return new Promise((resolve, reject) => {
+    execFile("python3", ["-W", "ignore", ...args], { timeout: 30_000 }, (error, stdout, stderr) => {
+      if (error) {
+        if (error.killed) {
+          reject(new Error("Transcript fetch timed out (30s)."));
+          return;
+        }
+        reject(new Error(parseStderrMessage(stderr || "")));
+        return;
+      }
+
+      const out = stdout?.trim();
+      if (!out) {
+        reject(new Error("Empty response from transcript script."));
+        return;
+      }
+
+      try {
+        resolve(JSON.parse(out) as TranscriptResult);
+      } catch {
+        reject(new Error("Failed to parse transcript output."));
+      }
+    });
+  });
+}
+
+function isRetryable(msg: string): boolean {
+  const lower = msg.toLowerCase();
+  return (
+    lower.includes("empty response") ||
+    lower.includes("no transcript") ||
+    lower.includes("too many requests") ||
+    lower.includes("rate limit") ||
+    lower.includes("failed to fetch") ||
+    lower.includes("timed out")
+  );
+}
+
 export async function fetchTranscript(payload: {
   videoId: string;
   languages: string[];
@@ -82,53 +147,23 @@ export async function fetchTranscript(payload: {
 
   const { videoId, languages } = payload;
   const args = [SCRIPT_PATH, videoId];
-
   if (languages.length > 0) {
     args.push(languages.join(","));
   }
 
-  return new Promise((resolve, reject) => {
-    execFile("python3", ["-W", "ignore", ...args], { timeout: 30_000 }, (error, stdout, stderr) => {
-      if (error) {
-        const stderrText = stderr?.trim() || "";
-        let message = "Failed to fetch transcript.";
+  let lastError: Error | null = null;
 
-        if (stderrText) {
-          // Try parsing the whole stderr or its last line as JSON
-          const lines = stderrText.split("\n").filter(Boolean);
-          let parsed = false;
-          for (const candidate of [stderrText, lines[lines.length - 1] || ""]) {
-            try {
-              const obj = JSON.parse(candidate) as { error?: string };
-              if (obj.error) {
-                message = obj.error;
-                parsed = true;
-                break;
-              }
-            } catch {}
-          }
-          if (!parsed) {
-            const lastLine = lines[lines.length - 1] || "";
-            if (lastLine.includes("Error") || lastLine.includes("error")) {
-              message = lastLine;
-            }
-          }
-        }
-
-        if (error.killed) {
-          message = "Transcript fetch timed out (30s).";
-        }
-
-        reject(new Error(message));
-        return;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await runPythonScript(args);
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      if (attempt < MAX_RETRIES && isRetryable(lastError.message)) {
+        console.warn(`[transcript] Attempt ${attempt + 1} failed: ${lastError.message} — retrying in ${RETRY_DELAY_MS}ms`);
+        await delay(RETRY_DELAY_MS);
       }
+    }
+  }
 
-      try {
-        const result = JSON.parse(stdout) as TranscriptResult;
-        resolve(result);
-      } catch {
-        reject(new Error("Failed to parse transcript output."));
-      }
-    });
-  });
+  throw lastError!;
 }

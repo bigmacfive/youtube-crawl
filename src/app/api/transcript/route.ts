@@ -88,15 +88,12 @@ export async function POST(request: Request) {
 
     return NextResponse.json(payload);
   } catch (error) {
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to retrieve the transcript.",
-      },
-      { status: 500 },
-    );
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Failed to retrieve the transcript.";
+    console.error("[transcript]", message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
