@@ -3,7 +3,7 @@
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-import { BrowserWindow } from "electrobun/bun";
+import { ApplicationMenu, BrowserWindow } from "electrobun/bun";
 
 const APP_TITLE = "Transcript Desk";
 const HEALTH_APP_NAME = "Transcript Desk";
@@ -12,6 +12,45 @@ const DESKTOP_BASE_URL = `http://127.0.0.1:${DESKTOP_PORT}`;
 const DESKTOP_HEALTH_URL = `${DESKTOP_BASE_URL}/api/health`;
 
 let nextServerProcess: Bun.Subprocess | null = null;
+
+ApplicationMenu.setApplicationMenu([
+  {
+    label: APP_TITLE,
+    submenu: [
+      { role: "about" },
+      { type: "divider" },
+      { role: "hide" },
+      { role: "hideOthers" },
+      { role: "showAll" },
+      { type: "divider" },
+      { role: "quit" },
+    ],
+  },
+  {
+    label: "Edit",
+    submenu: [
+      { role: "undo" },
+      { role: "redo" },
+      { type: "divider" },
+      { role: "cut" },
+      { role: "copy" },
+      { role: "paste" },
+      { role: "pasteAndMatchStyle" },
+      { role: "delete" },
+      { role: "selectAll" },
+    ],
+  },
+  {
+    label: "Window",
+    submenu: [
+      { role: "minimize" },
+      { role: "zoom" },
+      { role: "close" },
+      { type: "divider" },
+      { role: "toggleFullScreen" },
+    ],
+  },
+]);
 
 registerCleanup();
 void bootstrap();

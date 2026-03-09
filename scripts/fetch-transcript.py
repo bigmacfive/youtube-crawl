@@ -18,43 +18,65 @@ def main():
         print(json.dumps({"error": "youtube_transcript_api is not installed. Run: pip3 install youtube-transcript-api"}), file=sys.stderr)
         sys.exit(1)
 
-    api = YouTubeTranscriptApi()
+    try:
+        api = YouTubeTranscriptApi()
 
-    # List available transcripts
-    transcript_list = list(api.list(video_id))
-    available_languages = []
-    for t in transcript_list:
-        available_languages.append({
-            "code": t.language_code,
-            "label": t.language,
-            "is_generated": t.is_generated,
-            "is_translatable": t.is_translatable,
-        })
+        # List available transcripts
+        transcript_list = list(api.list(video_id))
+        available_languages = []
+        for t in transcript_list:
+            available_languages.append({
+                "code": t.language_code,
+                "label": t.language,
+                "is_generated": t.is_generated,
+                "is_translatable": t.is_translatable,
+            })
 
-    # Fetch transcript with preferred languages
-    if languages:
-        result = api.fetch(video_id, languages=languages)
-    else:
-        result = api.fetch(video_id)
+        # Fetch transcript with preferred languages
+        if languages:
+            result = api.fetch(video_id, languages=languages)
+        else:
+            result = api.fetch(video_id)
 
-    segments = []
-    for s in result.snippets:
-        segments.append({
-            "text": s.text,
-            "start": s.start,
-            "duration": s.duration,
-        })
+        segments = []
+        for s in result.snippets:
+            segments.append({
+                "text": s.text,
+                "start": s.start,
+                "duration": s.duration,
+            })
 
-    output = {
-        "video_id": result.video_id,
-        "language_code": result.language_code,
-        "language_label": result.language,
-        "is_generated": result.is_generated,
-        "available_languages": available_languages,
-        "segments": segments,
-    }
+        output = {
+            "video_id": result.video_id,
+            "language_code": result.language_code,
+            "language_label": result.language,
+            "is_generated": result.is_generated,
+            "available_languages": available_languages,
+            "segments": segments,
+        }
 
-    print(json.dumps(output))
+        print(json.dumps(output))
+
+    except Exception as e:
+        # Extract a user-friendly message from the exception
+        msg = str(e)
+        # Strip the long "please create an issue" boilerplate from youtube_transcript_api
+        marker = "If you are sure that the described cause"
+        idx = msg.find(marker)
+        if idx > 0:
+            msg = msg[:idx].strip().rstrip(",").rstrip()
+
+        # Provide friendlier messages for common errors
+        lower = msg.lower()
+        if "no transcript" in lower or "disabled" in lower:
+            msg = "이 영상에는 자막이 없습니다."
+        elif "video unavailable" in lower or "video is unavailable" in lower:
+            msg = "영상을 찾을 수 없습니다. URL을 확인해 주세요."
+        elif "too many requests" in lower:
+            msg = "YouTube 요청 제한에 걸렸습니다. 잠시 후 다시 시도해 주세요."
+
+        print(json.dumps({"error": msg}), file=sys.stderr)
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

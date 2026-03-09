@@ -94,13 +94,20 @@ export async function fetchTranscript(payload: {
         let message = "Failed to fetch transcript.";
 
         if (stderrText) {
-          try {
-            const parsed = JSON.parse(stderrText) as { error?: string };
-            if (parsed.error) {
-              message = parsed.error;
-            }
-          } catch {
-            const lines = stderrText.split("\n").filter(Boolean);
+          // Try parsing the whole stderr or its last line as JSON
+          const lines = stderrText.split("\n").filter(Boolean);
+          let parsed = false;
+          for (const candidate of [stderrText, lines[lines.length - 1] || ""]) {
+            try {
+              const obj = JSON.parse(candidate) as { error?: string };
+              if (obj.error) {
+                message = obj.error;
+                parsed = true;
+                break;
+              }
+            } catch {}
+          }
+          if (!parsed) {
             const lastLine = lines[lines.length - 1] || "";
             if (lastLine.includes("Error") || lastLine.includes("error")) {
               message = lastLine;
