@@ -60,7 +60,7 @@ function ensurePythonDep(): Promise<void> {
             if (installErr) {
               reject(
                 new Error(
-                  `youtube-transcript-api 설치 실패. 수동 설치: pip3 install youtube-transcript-api\n${installStderr}`,
+                  `Failed to install youtube-transcript-api. Run manually: pip3 install youtube-transcript-api\n${installStderr}`,
                 ),
               );
               return;

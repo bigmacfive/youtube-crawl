@@ -69,11 +69,11 @@ def main():
         # Provide friendlier messages for common errors
         lower = msg.lower()
         if "no transcript" in lower or "disabled" in lower:
-            msg = "이 영상에는 자막이 없습니다."
+            msg = "No transcript available for this video."
         elif "video unavailable" in lower or "video is unavailable" in lower:
-            msg = "영상을 찾을 수 없습니다. URL을 확인해 주세요."
+            msg = "Video not found. Please check the URL."
         elif "too many requests" in lower:
-            msg = "YouTube 요청 제한에 걸렸습니다. 잠시 후 다시 시도해 주세요."
+            msg = "YouTube rate limit reached. Please try again later."
 
         print(json.dumps({"error": msg}), file=sys.stderr)
         sys.exit(1)
